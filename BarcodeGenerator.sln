@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Blend for Visual Studio Version 17
+VisualStudioVersion = 17.13.35806.99
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarcodeGenerator", "BarcodeGenerator.csproj", "{301A390B-C1CB-4CE7-8F2B-99168D9A238F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfApp2", "..\WpfApp2\WpfApp2.csproj", "{EC5C219D-522A-4CB3-B60E-EF499A3B75B1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{301A390B-C1CB-4CE7-8F2B-99168D9A238F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{301A390B-C1CB-4CE7-8F2B-99168D9A238F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{301A390B-C1CB-4CE7-8F2B-99168D9A238F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{301A390B-C1CB-4CE7-8F2B-99168D9A238F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC5C219D-522A-4CB3-B60E-EF499A3B75B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC5C219D-522A-4CB3-B60E-EF499A3B75B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC5C219D-522A-4CB3-B60E-EF499A3B75B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC5C219D-522A-4CB3-B60E-EF499A3B75B1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B866D8EE-2C6D-4846-BC8D-032CC0498530}
+	EndGlobalSection
+EndGlobal
