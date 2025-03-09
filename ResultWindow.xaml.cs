@@ -69,11 +69,9 @@ namespace BarcodeGenerator
             numberOfLabels = int.Parse(Properties.Settings.Default.NumberOfLabels);
 
             // Use the number of columns exactly as defined in the template
-            numberOfColumns = columns; // This is the key fix - ensure we use the columns from template
+            numberOfColumns = columns;
 
-            // Set window size according to sheet dimensions with padding
-            this.Width = (templateWidth * MM_TO_PIXELS) + 40;
-            this.Height = (templateHeight * MM_TO_PIXELS) + 40;
+            // No window sizing - we'll rely on the ScrollViewer to handle content that's larger than the window
 
             int totalPages = (int)Math.Ceiling((double)barcodes.Count / numberOfLabels);
             pages.Clear();

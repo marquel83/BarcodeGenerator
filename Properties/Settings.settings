@@ -65,5 +65,8 @@
     <Setting Name="TemplateSettingsStorage" Type="System.String" Scope="User">
       <Value Profile="(Default)">&lt;Templates&gt;&lt;/Templates&gt;</Value>
     </Setting>
+    <Setting Name="BarcodeHistoryAssociations" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

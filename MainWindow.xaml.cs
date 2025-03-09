@@ -1,4 +1,8 @@
-﻿using System;
+﻿using DrawingRectangle = System.Drawing.Rectangle;
+using WPFRectangle = System.Windows.Shapes.Rectangle;
+using IOPath = System.IO.Path;
+using ShapesPath = System.Windows.Shapes.Path;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -14,7 +18,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Drawing;
-//using System.Windows.Shapes;
 using Microsoft.Win32;
 using ZXing;
 using System.IO;
@@ -22,6 +25,12 @@ using ZXing.Rendering;
 using ZXing.Windows.Compatibility;
 using System.Xml;
 using System.Xml.Linq;
+using QuestPDF.Infrastructure;
+using System.Runtime.ConstrainedExecution;
+using System.Windows.Shapes; // For Rectangle
+using System.Windows.Controls; // For Canvas
+
+
 
 namespace BarcodeGenerator
 {
@@ -29,17 +38,16 @@ namespace BarcodeGenerator
     {
         public MainWindow()
         {
-            /* RESET CODE
+            //RESET CODE
             // Reset settings first
-            Properties.Settings.Default.Reset();
+           /* Properties.Settings.Default.Reset();
             Properties.Settings.Default.TemplateNames = new System.Collections.Specialized.StringCollection();
             Properties.Settings.Default.SavedBarcodes = new System.Collections.Specialized.StringCollection();
             Properties.Settings.Default.BarcodeHistory = new System.Collections.Specialized.StringCollection();
             Properties.Settings.Default.TemplateSettingsStorage = "<Templates></Templates>";
-            Properties.Settings.Default.Save();
+            Properties.Settings.Default.Save();*/
 
-            */
-
+            
 
 
             InitializeComponent();
@@ -47,6 +55,7 @@ namespace BarcodeGenerator
             LoadTemplateNames();
             InitializeBarcodeTypes();
             CollapseAllGrids();
+            ResetSettingsGrid();
             ShowGrid(Generate_Grid_);
             ShowGrid(Generate_Settings_Grid);
             ShowGrid(PreviewSPGrid);
@@ -54,8 +63,80 @@ namespace BarcodeGenerator
             ShowGrid(GenerateBtnGrid);
             history_LB.SelectionChanged += history_LB_SelectionChanged;
             UpdateHistoryListBox();
-
         }
+
+        // Track the different operation modes
+        private enum TemplateMode { None, Adding, Editing, Deleting }
+        private TemplateMode currentTemplateMode = TemplateMode.None;
+        private string originalTemplateName = string.Empty;
+        private bool _formLoaded = false;
+
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Initialize any components that need the visual tree to be loaded
+
+            // Set the form loaded flag to true
+            _formLoaded = true;
+
+            // If you need to initialize any preview content after load
+            if (PreviewG != null && PreviewG.Visibility == Visibility.Visible)
+            {
+                try
+                {
+                    // Initial preview rendering if needed
+                    UpdateTemplatePreview();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error in Window_Loaded: {ex.Message}");
+                }
+            }
+        }
+
+        private void UpdateTemplatePreview()
+        {
+            if (!_formLoaded)
+                return;
+
+            if (sizeXTb == null || sizeYTb == null || no_labels_Tb == null ||
+                no_column_Tb == null || label_size_X_Tb == null || label_size_Y_Tb == null ||
+                mariginO_X_Tb == null || mariginO_Y_Tb == null ||
+                mariginI_X_Tb == null || mariginI_Y_Tb == null || PreviewG == null)
+            {
+                return;
+            }
+
+            // Try to parse the values
+            if (!string.IsNullOrEmpty(sizeXTb.Text) &&
+                !string.IsNullOrEmpty(sizeYTb.Text) &&
+                !string.IsNullOrEmpty(no_labels_Tb.Text) &&
+                !string.IsNullOrEmpty(no_column_Tb.Text) &&
+                !string.IsNullOrEmpty(label_size_X_Tb.Text) &&
+                !string.IsNullOrEmpty(label_size_Y_Tb.Text) &&
+                !string.IsNullOrEmpty(mariginO_X_Tb.Text) &&
+                !string.IsNullOrEmpty(mariginO_Y_Tb.Text) &&
+                !string.IsNullOrEmpty(mariginI_X_Tb.Text) &&
+                !string.IsNullOrEmpty(mariginI_Y_Tb.Text) &&
+                double.TryParse(sizeXTb.Text, out double sheetWidth) &&
+                double.TryParse(sizeYTb.Text, out double sheetHeight) &&
+                int.TryParse(no_labels_Tb.Text, out int numberOfLabels) &&
+                int.TryParse(no_column_Tb.Text, out int numberOfColumns) &&
+                double.TryParse(label_size_X_Tb.Text, out double labelWidth) &&
+                double.TryParse(label_size_Y_Tb.Text, out double labelHeight) &&
+                double.TryParse(mariginO_X_Tb.Text, out double marginOX) &&
+                double.TryParse(mariginO_Y_Tb.Text, out double marginOY) &&
+                double.TryParse(mariginI_X_Tb.Text, out double marginIX) &&
+                double.TryParse(mariginI_Y_Tb.Text, out double marginIY))
+            {
+                RenderTemplatePreviewInGrid(
+                    sheetWidth, sheetHeight, numberOfLabels, numberOfColumns,
+                    labelWidth, labelHeight, marginOX, marginOY, marginIX, marginIY
+                );
+            }
+        }
+        //private bool isEditingTemplate = false;
+        //private string originalTemplateName = string.Empty;
 
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -221,10 +302,123 @@ namespace BarcodeGenerator
                 }
             }
         }
+        private void SetInitialValues()
+        {
+            // Remove event handlers temporarily
+            sizeXTb.TextChanged -= TextBox_TextChanged;
+            sizeYTb.TextChanged -= TextBox_TextChanged;
+            // Remove handlers for other TextBoxes...
 
+            // Set initial values
+            sizeXTb.Text = "210";
+            sizeYTb.Text = "297";
+            // Set other values...
+
+            // Add handlers back
+            sizeXTb.TextChanged += TextBox_TextChanged;
+            sizeYTb.TextChanged += TextBox_TextChanged;
+            // Add handlers for other TextBoxes...
+        }
+
+        // Also, update the TextBox_TextChanged method to update the preview in real-time
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            CalculateLabelSize();
+            if (!_formLoaded)
+                return;
+
+            try
+            {
+                // First check if the control is loaded and visible
+                if (!IsLoaded || PreviewG == null)
+                    return;
+
+                CalculateLabelSize();
+                UpdateTemplatePreview();
+
+                // Check if all TextBoxes are properly initialized before trying to access them
+                if (sizeXTb == null || sizeYTb == null || no_labels_Tb == null ||
+                    no_column_Tb == null || label_size_X_Tb == null || label_size_Y_Tb == null ||
+                    mariginO_X_Tb == null || mariginO_Y_Tb == null ||
+                    mariginI_X_Tb == null || mariginI_Y_Tb == null || PreviewG == null)
+                {
+                    return; // Exit if any control is null
+                }
+
+                // Then try to parse the values, only if all TextBoxes have text
+                if (!string.IsNullOrEmpty(sizeXTb.Text) &&
+                    !string.IsNullOrEmpty(sizeYTb.Text) &&
+                    !string.IsNullOrEmpty(no_labels_Tb.Text) &&
+                    !string.IsNullOrEmpty(no_column_Tb.Text) &&
+                    !string.IsNullOrEmpty(label_size_X_Tb.Text) &&
+                    !string.IsNullOrEmpty(label_size_Y_Tb.Text) &&
+                    !string.IsNullOrEmpty(mariginO_X_Tb.Text) &&
+                    !string.IsNullOrEmpty(mariginO_Y_Tb.Text) &&
+                    !string.IsNullOrEmpty(mariginI_X_Tb.Text) &&
+                    !string.IsNullOrEmpty(mariginI_Y_Tb.Text) &&
+                    double.TryParse(sizeXTb.Text, out double sheetWidth) &&
+                    double.TryParse(sizeYTb.Text, out double sheetHeight) &&
+                    int.TryParse(no_labels_Tb.Text, out int numberOfLabels) &&
+                    int.TryParse(no_column_Tb.Text, out int numberOfColumns) &&
+                    double.TryParse(label_size_X_Tb.Text, out double labelWidth) &&
+                    double.TryParse(label_size_Y_Tb.Text, out double labelHeight) &&
+                    double.TryParse(mariginO_X_Tb.Text, out double marginOX) &&
+                    double.TryParse(mariginO_Y_Tb.Text, out double marginOY) &&
+                    double.TryParse(mariginI_X_Tb.Text, out double marginIX) &&
+                    double.TryParse(mariginI_Y_Tb.Text, out double marginIY))
+                {
+                    RenderTemplatePreviewInGrid(
+                        sheetWidth, sheetHeight, numberOfLabels, numberOfColumns,
+                        labelWidth, labelHeight, marginOX, marginOY, marginIX, marginIY
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception but don't show a message box to avoid annoying the user
+                Console.WriteLine($"Error updating preview: {ex.Message}");
+                // You could also log to a file or debug output
+                System.Diagnostics.Debug.WriteLine($"Error updating preview: {ex.Message}");
+            }
+        }
+
+        // Ensure the preview is updated when the window is resized
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // Only update if the PreviewG is visible
+            if (PreviewG.Visibility == Visibility.Visible && PreviewG.Children.Count > 0)
+            {
+                try
+                {
+                    // Get current values from UI or settings
+                    double sheetWidth, sheetHeight;
+                    int numberOfLabels, numberOfColumns;
+                    double labelWidth, labelHeight;
+                    double marginOX, marginOY, marginIX, marginIY;
+
+                    // Try to get values from UI first
+                    if (double.TryParse(sizeXTb.Text, out sheetWidth) &&
+                        double.TryParse(sizeYTb.Text, out sheetHeight) &&
+                        int.TryParse(no_labels_Tb.Text, out numberOfLabels) &&
+                        int.TryParse(no_column_Tb.Text, out numberOfColumns) &&
+                        double.TryParse(label_size_X_Tb.Text, out labelWidth) &&
+                        double.TryParse(label_size_Y_Tb.Text, out labelHeight) &&
+                        double.TryParse(mariginO_X_Tb.Text, out marginOX) &&
+                        double.TryParse(mariginO_Y_Tb.Text, out marginOY) &&
+                        double.TryParse(mariginI_X_Tb.Text, out marginIX) &&
+                        double.TryParse(mariginI_Y_Tb.Text, out marginIY))
+                    {
+                        RenderTemplatePreviewInGrid(
+                            sheetWidth, sheetHeight, numberOfLabels, numberOfColumns,
+                            labelWidth, labelHeight, marginOX, marginOY, marginIX, marginIY
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Silently handle errors in preview - don't show a message box
+                    Console.WriteLine($"Error updating preview on resize: {ex.Message}");
+                }
+            }
         }
 
         private void SaveTemplateSettings(string templateName)
@@ -412,18 +606,17 @@ namespace BarcodeGenerator
             labeltmplCB.SelectionChanged += LabelTmplCB_SelectionChanged;
         }
 
-        
 
-        private void previewtemplBtn_Click(object sender, RoutedEventArgs e)
+
+        /*private void previewtemplBtn_Click(object sender, RoutedEventArgs e)
         {
             if (!ValidateTemplateInput())
                 return;
 
             try
             {
-                // Create and show the preview window with current values
-                var previewWindow = new PreviewWindow();
-                previewWindow.ShowPreview(
+                // Instead of showing a new window, render the preview in the PreviewG grid
+                RenderTemplatePreviewInGrid(
                     double.Parse(sizeXTb.Text),
                     double.Parse(sizeYTb.Text),
                     int.Parse(no_labels_Tb.Text),
@@ -435,15 +628,98 @@ namespace BarcodeGenerator
                     double.Parse(mariginI_X_Tb.Text),
                     double.Parse(mariginI_Y_Tb.Text)
                 );
-                previewWindow.Owner = this;
-                previewWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-                previewWindow.Show();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error creating preview: {ex.Message}");
             }
+        }*/
+
+        // Add a method to render the template preview in the PreviewG grid
+        private void RenderTemplatePreviewInGrid(double sheetWidth, double sheetHeight, int numberOfLabels,
+    int numberOfColumns, double labelWidth, double labelHeight,
+    double marginOX, double marginOY, double marginIX, double marginIY)
+        {
+            if (PreviewG == null)
+                return;
+
+            // Clear the existing content in PreviewG
+            PreviewG.Children.Clear();
+
+            // Calculate the preview size based on the PreviewG dimensions
+            double previewG_Width = PreviewG.ActualWidth;
+            double previewG_Height = PreviewG.ActualHeight;
+
+            // Calculate scaling factor to maintain aspect ratio
+            double scaleX = previewG_Width / sheetWidth;
+            double scaleY = previewG_Height / sheetHeight;
+            double scale = Math.Min(scaleX, scaleY) * 0.9; // 90% of the available space to add some margin
+
+            // Create a canvas for the sheet preview
+            Canvas previewCanvas = new Canvas();
+            previewCanvas.Width = sheetWidth * scale;
+            previewCanvas.Height = sheetHeight * scale;
+
+            // Center the canvas in the PreviewG grid
+            previewCanvas.Margin = new Thickness(
+                (previewG_Width - (sheetWidth * scale)) / 2,
+                (previewG_Height - (sheetHeight * scale)) / 2,
+                0, 0);
+
+            // Draw the sheet boundary (paper)
+            WPFRectangle paperRect = new WPFRectangle();
+            paperRect.Width = sheetWidth * scale;
+            paperRect.Height = sheetHeight * scale;
+            paperRect.Stroke = System.Windows.Media.Brushes.Black;
+            paperRect.Fill = System.Windows.Media.Brushes.White;
+            Canvas.SetLeft(paperRect, 0);
+            Canvas.SetTop(paperRect, 0);
+            previewCanvas.Children.Add(paperRect);
+
+            // Calculate number of rows based on labels and columns
+            int rows = (int)Math.Ceiling((double)numberOfLabels / numberOfColumns);
+
+            // Draw each label
+            int labelCounter = 0;
+            for (int row = 0; row < rows; row++)
+            {
+                for (int col = 0; col < numberOfColumns; col++)
+                {
+                    labelCounter++;
+
+                    if (labelCounter > numberOfLabels)
+                        break;
+
+                    // Calculate position for this label with scaling
+                    double left = (marginOX + col * (labelWidth + marginIX)) * scale;
+                    double top = (marginOY + row * (labelHeight + marginIY)) * scale;
+
+                    // Draw the label
+                    WPFRectangle labelRect = new WPFRectangle();
+                    labelRect.Width = labelWidth * scale;
+                    labelRect.Height = labelHeight * scale;
+                    labelRect.Stroke = System.Windows.Media.Brushes.DarkGray;
+                    labelRect.Fill = System.Windows.Media.Brushes.LightGray;
+                    labelRect.StrokeThickness = 1;
+                    Canvas.SetLeft(labelRect, left);
+                    Canvas.SetTop(labelRect, top);
+                    previewCanvas.Children.Add(labelRect);
+
+                    // Add label number for reference
+                    TextBlock labelText = new TextBlock();
+                    labelText.Text = labelCounter.ToString();
+                    labelText.Foreground = System.Windows.Media.Brushes.DarkGray;
+                    Canvas.SetLeft(labelText, left + (labelWidth * scale / 2) - 5);
+                    Canvas.SetTop(labelText, top + (labelHeight * scale / 2) - 10);
+                    previewCanvas.Children.Add(labelText);
+                }
+            }
+
+            // Add the canvas to the PreviewG grid
+            PreviewG.Children.Add(previewCanvas);
         }
+
+
 
         private bool ValidateTemplateInput()
         {
@@ -791,30 +1067,60 @@ namespace BarcodeGenerator
             }
         }
 
-        
 
+
+        // Updated addtemplBtn_Click to handle all three modes
         private void addtemplBtn_Click(object sender, RoutedEventArgs e)
         {
-            // Save the template information
+            switch (currentTemplateMode)
+            {
+                case TemplateMode.Adding:
+                    HandleAddTemplate();
+                    break;
+
+                case TemplateMode.Editing:
+                    HandleEditTemplate();
+                    break;
+
+                case TemplateMode.Deleting:
+                    HandleDeleteTemplate();
+                    break;
+
+                default:
+                    // Default behavior (should not happen)
+                    MessageBox.Show("Nieoczekiwany błąd w trybie szablonu.");
+                    break;
+            }
+        }
+
+        // Handle adding a new template
+        private void HandleAddTemplate()
+        {
             var templateName = label_name_Tb.Text;
 
             if (string.IsNullOrWhiteSpace(templateName))
             {
-                MessageBox.Show("Please enter a template name.");
+                MessageBox.Show("Proszę wpisać nazwę szablonu.");
+                return;
+            }
+
+            // Check if name already exists
+            if (Properties.Settings.Default.TemplateNames != null &&
+                Properties.Settings.Default.TemplateNames.Cast<string>().Any(name => name == templateName))
+            {
+                MessageBox.Show("Etykieta z taką nazwą już istnieje.");
                 return;
             }
 
             // Add the template name to the list of template names
             if (Properties.Settings.Default.TemplateNames == null)
             {
-                Properties.Settings.Default.TemplateNames = new StringCollection();
-            }
-            if (!Properties.Settings.Default.TemplateNames.Contains(templateName))
-            {
-                Properties.Settings.Default.TemplateNames.Add(templateName);
+                Properties.Settings.Default.TemplateNames = new System.Collections.Specialized.StringCollection();
             }
 
-            // Save the custom template settings
+            Properties.Settings.Default.TemplateNames.Add(templateName);
+
+            // Save the template settings
             SaveTemplateSettings(templateName);
 
             // Update LastSelectedTemplate
@@ -824,9 +1130,145 @@ namespace BarcodeGenerator
             // Reload the template names into the ComboBox
             LoadTemplateNames();
 
-            MessageBox.Show("Template saved successfully!");
+            MessageBox.Show("Szablon został zapisany pomyślnie!");
         }
 
+        // Handle editing an existing template
+        private void HandleEditTemplate()
+        {
+            var templateName = label_name_Tb.Text;
+
+            if (string.IsNullOrWhiteSpace(templateName))
+            {
+                MessageBox.Show("Proszę wpisać nazwę szablonu.");
+                return;
+            }
+
+            // If the name was changed, we need to update the template names collection
+            if (templateName != originalTemplateName)
+            {
+                // Check if the new name already exists (but isn't the original name)
+                if (Properties.Settings.Default.TemplateNames != null &&
+                    Properties.Settings.Default.TemplateNames.Cast<string>().Any(name => name == templateName))
+                {
+                    MessageBox.Show("Etykieta z taką nazwą już istnieje.");
+                    return;
+                }
+
+                // Remove the old name and add the new one
+                if (Properties.Settings.Default.TemplateNames != null)
+                {
+                    var templates = Properties.Settings.Default.TemplateNames.Cast<string>().ToList();
+                    int index = templates.IndexOf(originalTemplateName);
+                    if (index >= 0)
+                    {
+                        Properties.Settings.Default.TemplateNames.RemoveAt(index);
+                        Properties.Settings.Default.TemplateNames.Add(templateName);
+                    }
+                }
+            }
+
+            // Save the template settings
+            SaveTemplateSettings(templateName);
+
+            // Update LastSelectedTemplate
+            Properties.Settings.Default.LastSelectedTemplate = templateName;
+            Properties.Settings.Default.Save();
+
+            // Reload the template names into the ComboBox
+            LoadTemplateNames();
+
+            MessageBox.Show("Szablon został zaktualizowany pomyślnie!");
+        }
+
+        // Handle deleting a template
+        private void HandleDeleteTemplate()
+        {
+            // Confirm deletion
+            MessageBoxResult result = MessageBox.Show(
+                $"Czy na pewno chcesz usunąć szablon '{originalTemplateName}'?",
+                "Potwierdzenie usunięcia",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                // Remove the template from the names collection
+                if (Properties.Settings.Default.TemplateNames != null)
+                {
+                    var templates = Properties.Settings.Default.TemplateNames.Cast<string>().ToList();
+                    int index = templates.IndexOf(originalTemplateName);
+                    if (index >= 0)
+                    {
+                        Properties.Settings.Default.TemplateNames.RemoveAt(index);
+
+                        // Remove template settings from XML storage
+                        RemoveTemplateSettings(originalTemplateName);
+
+                        // Save changes
+                        Properties.Settings.Default.Save();
+
+                        // Update ComboBox and interface
+                        PopulateTemplateSelector();
+
+                        MessageBox.Show("Szablon został usunięty pomyślnie.");
+
+                        // If this was the last selected template, update that setting
+                        if (Properties.Settings.Default.LastSelectedTemplate == originalTemplateName)
+                        {
+                            if (Properties.Settings.Default.TemplateNames != null &&
+                                Properties.Settings.Default.TemplateNames.Count > 0)
+                            {
+                                Properties.Settings.Default.LastSelectedTemplate =
+                                    Properties.Settings.Default.TemplateNames[0];
+                            }
+                            else
+                            {
+                                Properties.Settings.Default.LastSelectedTemplate = string.Empty;
+                            }
+                            Properties.Settings.Default.Save();
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Nie można odnaleźć szablonu do usunięcia.");
+                    }
+                }
+            }
+        }
+
+        // Method to remove template settings from XML storage
+        private void RemoveTemplateSettings(string templateName)
+        {
+            try
+            {
+                // Check if we have settings storage
+                if (!string.IsNullOrEmpty(Properties.Settings.Default.TemplateSettingsStorage))
+                {
+                    // Parse XML
+                    XDocument doc = XDocument.Parse(Properties.Settings.Default.TemplateSettingsStorage);
+
+                    // Find and remove template
+                    var template = doc.Root.Elements("Template")
+                        .FirstOrDefault(e => e.Attribute("Name")?.Value == templateName);
+
+                    if (template != null)
+                    {
+                        template.Remove();
+
+                        // Save updated XML back to settings
+                        Properties.Settings.Default.TemplateSettingsStorage = doc.ToString();
+                        Properties.Settings.Default.Save();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error removing template settings: {ex.Message}");
+            }
+        }
+
+        // Modify the LabelTmplCB_SelectionChanged method to update the preview
         private void LabelTmplCB_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (labeltmplCB.SelectedItem != null)
@@ -839,8 +1281,37 @@ namespace BarcodeGenerator
 
                 // Load this template's specific settings
                 LoadTemplateSettings(selectedTemplate);
+
+                // Generate preview of the selected template
+                try
+                {
+                    // Get the values from the loaded template
+                    double sheetWidth = double.Parse(Properties.Settings.Default.SheetWidth);
+                    double sheetHeight = double.Parse(Properties.Settings.Default.SheetHeight);
+                    int numberOfLabels = int.Parse(Properties.Settings.Default.NumberOfLabels);
+                    int numberOfColumns = int.Parse(Properties.Settings.Default.NumberOfColumns);
+                    double labelWidth = double.Parse(Properties.Settings.Default.LabelWidth);
+                    double labelHeight = double.Parse(Properties.Settings.Default.LabelHeight);
+                    double marginOX = double.Parse(Properties.Settings.Default.MarginOX);
+                    double marginOY = double.Parse(Properties.Settings.Default.MarginOY);
+                    double marginIX = double.Parse(Properties.Settings.Default.MarginIX);
+                    double marginIY = double.Parse(Properties.Settings.Default.MarginIY);
+
+                    // Render the preview
+                    RenderTemplatePreviewInGrid(
+                        sheetWidth, sheetHeight, numberOfLabels, numberOfColumns,
+                        labelWidth, labelHeight, marginOX, marginOY, marginIX, marginIY
+                    );
+                }
+                catch (Exception ex)
+                {
+                    // Silently handle errors in preview - don't show a message box
+                    Console.WriteLine($"Error creating preview: {ex.Message}");
+                }
             }
         }
+
+
 
         private void ShowResultWindow(List<BarcodeData> barcodes, string templateName)
         {
@@ -860,24 +1331,46 @@ namespace BarcodeGenerator
 
         private void SaveToHistory(List<BarcodeData> barcodes, string source)
         {
-            if (Properties.Settings.Default.SavedBarcodes == null)
-                Properties.Settings.Default.SavedBarcodes = new StringCollection();
-
             if (Properties.Settings.Default.BarcodeHistory == null)
                 Properties.Settings.Default.BarcodeHistory = new StringCollection();
 
-            // Add barcodes to saved collection
-            foreach (var barcode in barcodes)
-            {
-                Properties.Settings.Default.SavedBarcodes.Add(barcode.Value);
-            }
+            // Generate a unique ID for this history entry
+            string historyId = Guid.NewGuid().ToString();
 
             // Add history entry
             string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            string historyEntry = $"{timestamp} - {source} ({barcodes.Count} kodów)";
+            string historyEntry = $"{timestamp} - {source} ({barcodes.Count} kodów)|{historyId}";
             Properties.Settings.Default.BarcodeHistory.Add(historyEntry);
 
+            // Save the association between this history entry and its barcodes
+            XDocument historyDoc;
+            if (string.IsNullOrEmpty(Properties.Settings.Default.BarcodeHistoryAssociations))
+            {
+                historyDoc = new XDocument(new XElement("HistoryEntries"));
+            }
+            else
+            {
+                historyDoc = XDocument.Parse(Properties.Settings.Default.BarcodeHistoryAssociations);
+            }
+
+            // Create an element for this history entry
+            var entryElement = new XElement("HistoryEntry",
+                new XAttribute("Id", historyId),
+                new XAttribute("Timestamp", timestamp));
+
+            // Add each barcode to the history entry
+            foreach (var barcode in barcodes)
+            {
+                entryElement.Add(new XElement("Barcode", barcode.Value));
+            }
+
+            // Add the entry to the document
+            historyDoc.Root.Add(entryElement);
+
+            // Save back to settings
+            Properties.Settings.Default.BarcodeHistoryAssociations = historyDoc.ToString();
             Properties.Settings.Default.Save();
+
             UpdateHistoryListBox();
         }
 
@@ -918,6 +1411,7 @@ namespace BarcodeGenerator
             Generate_Settings_Grid.Visibility = Visibility.Collapsed;
             PreviewSPGrid.Visibility = Visibility.Collapsed;
             TemplateSPGrid.Visibility = Visibility.Collapsed;
+            CodesHistSp.Visibility = Visibility.Collapsed;
         }
 
         private void ShowGrid(Grid activeGrid)
@@ -928,6 +1422,7 @@ namespace BarcodeGenerator
         private void HomeButton_Click(object sender, RoutedEventArgs e)
         {
             CollapseAllGrids();
+            ResetSettingsGrid();
             ShowGrid(Generate_Grid_);
             ShowGrid(Generate_Settings_Grid);
             ShowGrid(PreviewSPGrid);
@@ -938,8 +1433,10 @@ namespace BarcodeGenerator
         private void ManualButton_Click(object sender, RoutedEventArgs e)
         {
             CollapseAllGrids();
+            ResetSettingsGrid();
             ShowGrid(ManualGrid);
             ShowGrid(Generate_Grid_);
+            ShowGrid(GenerateBtnGrid);
             ShowGrid(Generate_Settings_Grid);
             ShowGrid(PreviewSPGrid);
         }
@@ -947,11 +1444,13 @@ namespace BarcodeGenerator
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             CollapseAllGrids();
+            ResetSettingsGrid();
             ShowGrid(SettingsGrid);
             ShowGrid(SettingsBtnGrid);
 
         }
 
+        // Updated addBtn_Click for consistency with new mode enum
         private void addBtn_Click(object sender, RoutedEventArgs e)
         {
             ShowGrid(SettingsGrid);
@@ -961,8 +1460,27 @@ namespace BarcodeGenerator
             ShowGrid(TplBtnSpGrid);
             ShowGrid(PreviewSPGrid);
 
+            // Set mode to adding new template
+            currentTemplateMode = TemplateMode.Adding;
+
+            // Make fields editable
+            SetTemplateFieldsReadOnly(false);
+
+            // Clear template name field for new entry
+            label_name_Tb.Text = string.Empty;
+
+            // Make sure button text is correct
+            addtemplBtn.Content = "Zapisz";
+            addtemplBtn.FontWeight = FontWeights.Bold;
+
+            // Make sure template name field is visible and editable
+            if (FindName("___TmplNameSP_") is StackPanel templateNameStackPanel)
+            {
+                templateNameStackPanel.Visibility = Visibility.Visible;
+            }
         }
 
+        // Updated editBtn_Click for consistency with new mode enum
         private void editBtn_Click(object sender, RoutedEventArgs e)
         {
             ShowGrid(SettingsGrid);
@@ -971,6 +1489,73 @@ namespace BarcodeGenerator
             ShowGrid(Generate_Grid_);
             ShowGrid(TplBtnSpGrid);
             ShowGrid(PreviewSPGrid);
+
+            // Set mode to editing existing template
+            currentTemplateMode = TemplateMode.Editing;
+
+            // Make fields editable
+            SetTemplateFieldsReadOnly(false);
+
+            // Make sure button text is correct
+            addtemplBtn.Content = "Zapisz";
+            addtemplBtn.FontWeight = FontWeights.Bold;
+
+            // Change format title to show we're in edit mode with bold text
+            TextBlock formatTitleTextBlock = FindName("___Name_FormatTB_") as TextBlock;
+            if (formatTitleTextBlock != null)
+            {
+                formatTitleTextBlock.Text = "Szablon";
+                formatTitleTextBlock.FontWeight = FontWeights.Bold;
+            }
+
+            // Change template name text block to "Nowa nazwa szablonu" with bold text
+            TextBlock tmplNameTextBlock = FindName("TmplName") as TextBlock;
+            if (tmplNameTextBlock != null)
+            {
+                tmplNameTextBlock.Text = "Nowa nazwa szablonu";
+                tmplNameTextBlock.FontWeight = FontWeights.Bold;
+            }
+
+            // Populate formatCb with template names instead of paper sizes
+            PopulateTemplateSelector();
+
+            // Add SelectionChanged handler to load template settings when template is selected
+            formatCb.SelectionChanged -= formatCb_SelectionChanged; // Remove the paper size handler
+            formatCb.SelectionChanged += EditTemplateSelectionChanged; // Add template selection handler
+        }
+
+        private void PopulateTemplateSelector()
+        {
+            // Get template names from settings
+            var templateNames = Properties.Settings.Default.TemplateNames;
+            if (templateNames != null)
+            {
+                var templates = templateNames.Cast<string>().ToList();
+                formatCb.ItemsSource = templates;
+
+                if (templates.Count > 0)
+                {
+                    formatCb.SelectedIndex = 0; // Select first template by default
+                }
+            }
+        }
+
+        private void EditTemplateSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Get selected template name
+            if (formatCb.SelectedItem != null)
+            {
+                string selectedTemplate = formatCb.SelectedItem.ToString();
+
+                // Store the original template name for later comparison
+                originalTemplateName = selectedTemplate;
+
+                // Load this template's settings into the UI fields
+                LoadTemplateSettings(selectedTemplate);
+
+                // Save the template name to use when saving changes
+                label_name_Tb.Text = selectedTemplate;
+            }
         }
 
         private void deleteBtn_Click(object sender, RoutedEventArgs e)
@@ -981,17 +1566,164 @@ namespace BarcodeGenerator
             ShowGrid(Generate_Grid_);
             ShowGrid(TplBtnSpGrid);
             ShowGrid(PreviewSPGrid);
+
+            // Set mode to deleting template
+            currentTemplateMode = TemplateMode.Deleting;
+
+            // Change format title text and make it bold
+            TextBlock formatTitleTextBlock = FindName("___Name_FormatTB_") as TextBlock;
+            if (formatTitleTextBlock != null)
+            {
+                formatTitleTextBlock.Text = "Szablon do usunięcia";
+                formatTitleTextBlock.FontWeight = FontWeights.Bold;
+            }
+
+            // Hide template name stack panel
+            StackPanel templateNameStackPanel = FindName("___TmplNameSP_") as StackPanel;
+            if (templateNameStackPanel != null)
+            {
+                templateNameStackPanel.Visibility = Visibility.Collapsed;
+            }
+
+            // Populate formatCb with template names
+            PopulateTemplateSelector();
+
+            // Configure text boxes to be in read-only mode
+            SetTemplateFieldsReadOnly(true);
+
+            // Add SelectionChanged handler to load template settings when template is selected
+            formatCb.SelectionChanged -= formatCb_SelectionChanged;
+            formatCb.SelectionChanged += DeleteTemplateSelectionChanged;
+
+            // Change addtemplBtn text to "Usuń" with bold text
+            Button deleteTemplateButton = addtemplBtn;
+            if (deleteTemplateButton != null)
+            {
+                deleteTemplateButton.Content = "Usuń";
+                deleteTemplateButton.FontWeight = FontWeights.Bold;
+            }
+        }
+
+        // Helper method to set all template fields to read-only or editable
+        private void SetTemplateFieldsReadOnly(bool readOnly)
+        {
+            // Set all relevant text boxes to read-only mode
+            sizeXTb.IsReadOnly = readOnly;
+            sizeYTb.IsReadOnly = readOnly;
+            mariginO_X_Tb.IsReadOnly = readOnly;
+            mariginO_Y_Tb.IsReadOnly = readOnly;
+            mariginI_X_Tb.IsReadOnly = readOnly;
+            mariginI_Y_Tb.IsReadOnly = readOnly;
+            label_size_X_Tb.IsReadOnly = readOnly;
+            label_size_Y_Tb.IsReadOnly = readOnly;
+            no_labels_Tb.IsReadOnly = readOnly;
+            no_column_Tb.IsReadOnly = readOnly;
+            label_name_Tb.IsReadOnly = readOnly;
+
+            // Also update visual appearance to indicate read-only status
+            var background = readOnly ? System.Windows.Media.Brushes.LightGray : System.Windows.Media.Brushes.White;
+
+            sizeXTb.Background = background;
+            sizeYTb.Background = background;
+            mariginO_X_Tb.Background = background;
+            mariginO_Y_Tb.Background = background;
+            mariginI_X_Tb.Background = background;
+            mariginI_Y_Tb.Background = background;
+            label_size_X_Tb.Background = background;
+            label_size_Y_Tb.Background = background;
+            no_labels_Tb.Background = background;
+            no_column_Tb.Background = background;
+            label_name_Tb.Background = background;
+        }
+
+        // Modified to handle template selection for deletion
+        private void DeleteTemplateSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (formatCb.SelectedItem != null)
+            {
+                string selectedTemplate = formatCb.SelectedItem.ToString();
+
+                // Store the original template name for deletion
+                originalTemplateName = selectedTemplate;
+
+                // Load template settings for display (will be read-only)
+                LoadTemplateSettings(selectedTemplate);
+            }
+        }
+
+        // Method to reset the SettingsGrid when it's collapsed or we switch views
+        private void ResetSettingsGrid()
+        {
+            // Reset the mode flag
+            currentTemplateMode = TemplateMode.None;
+            originalTemplateName = string.Empty;
+
+            // Reset fields to be editable
+            SetTemplateFieldsReadOnly(false);
+
+            // Reset the format title text and font weight
+            TextBlock formatTitleTextBlock = FindName("___Name_FormatTB_") as TextBlock;
+            if (formatTitleTextBlock != null)
+            {
+                formatTitleTextBlock.Text = "Format papieru";
+                formatTitleTextBlock.FontWeight = FontWeights.Bold;
+            }
+
+            // Reset the template name text block
+            TextBlock tmplNameTextBlock = FindName("TmplName") as TextBlock;
+            if (tmplNameTextBlock != null)
+            {
+                tmplNameTextBlock.Text = "Nazwa szablonu";
+                tmplNameTextBlock.FontWeight = FontWeights.Bold;
+            }
+
+            // Reset button text
+            addtemplBtn.Content = "Zapisz";
+            addtemplBtn.FontWeight = FontWeights.Bold;
+
+            // Show the template name stack panel
+            StackPanel templateNameStackPanel = FindName("___TmplNameSP_") as StackPanel;
+            if (templateNameStackPanel != null)
+            {
+                templateNameStackPanel.Visibility = Visibility.Visible;
+            }
+
+            // Reset formatCb to show paper sizes
+            formatCb.SelectionChanged -= EditTemplateSelectionChanged; // Remove template selection handler
+            formatCb.SelectionChanged -= DeleteTemplateSelectionChanged; // Remove delete selection handler
+            formatCb.SelectionChanged += formatCb_SelectionChanged; // Add paper size handler back
+
+            // Reinitialize paper sizes
+            InitializePaperSizes();
         }
 
         private void LoadToManualBtn_Click(object sender, RoutedEventArgs e)
         {
+            // Get codes from codesLB
+            var codes = codesLB.ItemsSource as List<string>;
 
+            if (codes != null && codes.Any())
+            {
+                // Clear existing text in manualTB_
+                manualTB_.Text = string.Empty;
+
+                // Add each code on a new line
+                manualTB_.Text = string.Join(Environment.NewLine, codes);
+
+                // Switch to Manual view (same as clicking the Manual button)
+                ManualButton_Click(sender, e);
+            }
+            else
+            {
+                MessageBox.Show("No codes available to load.");
+            }
         }
 
 
         private void HistoryButton_Click(object sender, RoutedEventArgs e)
         {
             CollapseAllGrids();
+            ResetSettingsGrid();
             ShowGrid(HistoryGrid);
 
         }
@@ -1005,7 +1737,7 @@ namespace BarcodeGenerator
         private List<string> ReadBarcodesFromFile(string filePath)
         {
             List<string> barcodes = new List<string>();
-            string extension = Path.GetExtension(filePath).ToLower();
+            string extension = IOPath.GetExtension(filePath).ToLower();
 
             try
             {
@@ -1045,8 +1777,61 @@ namespace BarcodeGenerator
             if (history_LB.SelectedItem != null)
             {
                 string selectedEntry = history_LB.SelectedItem?.ToString() ?? string.Empty;
-                ShowBarcodesForEntry(selectedEntry);
+
+                // Show CodesHistSP grid
+                CodesHistSp.Visibility = Visibility.Visible;
+
+                // Populate codesLB with barcodes from the selected history entry
+                List<string> barcodes = GetBarcodesForHistoryEntry(selectedEntry);
+                codesLB.ItemsSource = barcodes;
             }
+        }
+
+        private List<string> GetBarcodesForHistoryEntry(string historyEntry)
+        {
+            List<string> barcodes = new List<string>();
+
+            try
+            {
+                // Extract history ID from the entry
+                string[] parts = historyEntry.Split('|');
+                if (parts.Length < 2)
+                {
+                    // Old format history entries won't have the ID
+                    return barcodes;
+                }
+
+                string historyId = parts[1];
+
+                // Load XML with history-barcode associations
+                if (string.IsNullOrEmpty(Properties.Settings.Default.BarcodeHistoryAssociations))
+                {
+                    return barcodes;
+                }
+
+                XDocument historyDoc = XDocument.Parse(Properties.Settings.Default.BarcodeHistoryAssociations);
+
+                // Find the history entry with this ID
+                var entryElement = historyDoc.Root.Elements("HistoryEntry")
+                    .FirstOrDefault(e => e.Attribute("Id")?.Value == historyId);
+
+                if (entryElement == null)
+                {
+                    return barcodes;
+                }
+
+                // Get all barcodes for this history entry
+                foreach (var barcodeElement in entryElement.Elements("Barcode"))
+                {
+                    barcodes.Add(barcodeElement.Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error retrieving barcodes: {ex.Message}");
+            }
+
+            return barcodes;
         }
 
         private void ShowBarcodesForEntry(string historyEntry)
@@ -1113,33 +1898,13 @@ namespace BarcodeGenerator
 
                     if (barcodes.Count > 0)
                     {
-                        // Initialize SavedBarcodes if null
-                        if (Properties.Settings.Default.SavedBarcodes == null)
-                        {
-                            Properties.Settings.Default.SavedBarcodes = new StringCollection();
-                        }
+                        // Convert string barcodes to BarcodeData objects
+                        List<BarcodeData> barcodeDataList = barcodes.Select(code => new BarcodeData { Value = code }).ToList();
 
-                        // Add barcodes to settings
-                        Properties.Settings.Default.SavedBarcodes.AddRange(barcodes.ToArray());
+                        // Save to history with the new method
+                        SaveToHistory(barcodeDataList, $"Imported from {IOPath.GetFileName(filePath)}");
 
-                        // Initialize BarcodeHistory if null
-                        if (Properties.Settings.Default.BarcodeHistory == null)
-                        {
-                            Properties.Settings.Default.BarcodeHistory = new StringCollection();
-                        }
-
-                        // Add history entry
-                        string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                        string historyEntry = $"{timestamp} - {Path.GetFileName(filePath)} ({barcodes.Count} kodów)";
-                        Properties.Settings.Default.BarcodeHistory.Add(historyEntry);
-
-                        // Save settings
-                        Properties.Settings.Default.Save();
-
-                        // Update history ListBox
-                        UpdateHistoryListBox();
-
-                        MessageBox.Show($"Pomyślnie załadowano {barcodes.Count} kodów kreskowych z pliku: {Path.GetFileName(filePath)}");
+                        MessageBox.Show($"Pomyślnie załadowano {barcodes.Count} kodów kreskowych z pliku: {IOPath.GetFileName(filePath)}");
                     }
                     else
                     {

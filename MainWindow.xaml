@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:BarcodeGenerator"
         mc:Ignorable="d"
         MouseDown="Window_MouseDown"
-        Title="MainWindow" Height="550" Width="900" Background="{x:Null}" ResizeMode="NoResize" WindowStyle="None" WindowStartupLocation="CenterScreen">
+        Title="MainWindow" Height="550" Width="900" Background="{x:Null}" ResizeMode="NoResize" WindowStyle="None" WindowStartupLocation="CenterScreen" Loaded="Window_Loaded" SizeChanged="Window_SizeChanged">
 
     <Window.Resources>
         <Style x:Key="HoverButtonStyle" TargetType="Button">
@@ -118,13 +118,13 @@
                 <TextBox x:Name="manualTB_" Height="220" TextWrapping="Wrap" Width="233" BorderBrush="#FF080808"/>
             </StackPanel>
         </Grid>
-        <Grid x:Name="SettingsGrid" HorizontalAlignment="Left" Height="357" Margin="150,70,0,0" VerticalAlignment="Top" Width="425">
+        <Grid x:Name="SettingsGrid" HorizontalAlignment="Left" Height="357" Margin="150,70,0,0" VerticalAlignment="Top" Width="425" d:IsHidden="True">
             <Rectangle HorizontalAlignment="Left" Height="442" VerticalAlignment="Center" Width="730" Fill="White"/>
             <TextBlock HorizontalAlignment="Right" Height="21" TextWrapping="Wrap" VerticalAlignment="Top" Width="100" Margin="0,10,8,0"><Run FontWeight="Bold" Language="pl-pl" Text="S"/><Run FontWeight="Bold" Text="zablo"/><Run FontWeight="Bold" Language="pl-pl" Text="ny "/><Run FontWeight="Bold" Text="etykiet"/></TextBlock>
-            <Grid x:Name="TemplateSPGrid" HorizontalAlignment="Center" Height="321" Margin="0,36,0,0" VerticalAlignment="Top" Width="425" Background="#FFE8E2E2">
+            <Grid x:Name="TemplateSPGrid" HorizontalAlignment="Center" Height="321" Margin="0,36,0,0" VerticalAlignment="Top" Width="425" d:IsHidden="True">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Width="430" Margin="0,20,0,276">
-                    <TextBlock Height="25" TextWrapping="Wrap" HorizontalAlignment="Left"><Run FontWeight="Bold" Text="Format papieru:"/><LineBreak/></TextBlock>
-                    <ComboBox x:Name="formatCb" Height="25" Width="113" SelectionChanged="formatCb_SelectionChanged" HorizontalContentAlignment="Center" HorizontalAlignment="Right" Margin="114,0,0,0"/>
+                    <TextBlock x:Name="___Name_FormatTB_" Height="25" TextWrapping="Wrap" HorizontalAlignment="Left" Width="120"><Run FontWeight="Bold" Text="Format papieru:"/><LineBreak/></TextBlock>
+                    <ComboBox x:Name="formatCb" Height="25" Width="113" SelectionChanged="formatCb_SelectionChanged" HorizontalContentAlignment="Center" HorizontalAlignment="Right" Margin="84,0,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Width="430" Margin="0,65,0,231">
                     <TextBlock Height="25" TextWrapping="Wrap" HorizontalAlignment="Left" Padding="0,0,94,4"><Run FontWeight="Bold" Text="Wymiary:"/></TextBlock>
@@ -166,12 +166,12 @@
                     <TextBlock TextWrapping="Wrap" TextAlignment="Center" Height="25" Width="32"><Run FontWeight="Bold" Language="pl-pl" Text="Y:"/></TextBlock>
                     <TextBox x:Name="label_size_Y_Tb" TextWrapping="Wrap" Text="0" Width="66" TextAlignment="Center" Height="25" PreviewTextInput="NumberTB_PreviewTextInput"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Width="430" Margin="0,290,0,6">
-                    <TextBlock Height="25" TextWrapping="Wrap" HorizontalAlignment="Left"><Run FontWeight="Bold" Text="Nazwa szablonu:"/></TextBlock>
-                    <TextBox x:Name="label_name_Tb" TextWrapping="Wrap" Text="nazwa" Width="120" TextAlignment="Center" GotFocus="TextBox_GotFocus" LostFocus="TextBox_LostFocus" Margin="109,0,0,0"/>
+                <StackPanel x:Name="___TmplNameSP_" Orientation="Horizontal" HorizontalAlignment="Left" Width="430" Margin="0,290,0,6">
+                    <TextBlock x:Name="TmplName" Height="25" TextWrapping="Wrap" HorizontalAlignment="Left" Width="130"><Run FontWeight="Bold" Text="Nazwa szablonu:"/></TextBlock>
+                    <TextBox x:Name="label_name_Tb" TextWrapping="Wrap" Text="nazwa" Width="120" TextAlignment="Center" GotFocus="TextBox_GotFocus" LostFocus="TextBox_LostFocus" Margin="83,0,0,0"/>
                 </StackPanel>
             </Grid>
-            <Grid x:Name="SettingsBtnGrid" Margin="297,36,0,0" d:IsHidden="True">
+            <Grid x:Name="SettingsBtnGrid" Margin="297,36,0,0">
                 <StackPanel x:Name="SettingsBtnSP" VerticalAlignment="Center" HorizontalAlignment="Right">
                     <Button x:Name="addBtn" Content="Dodaj" Click="addBtn_Click" Height="31" Width="126" BorderBrush="{x:Null}" FontWeight="Bold" FontSize="14" Margin="0,-2,0,0">
                         <Button.Style>
@@ -296,24 +296,24 @@
                 </StackPanel>
             </Grid>
         </Grid>
-        <Grid x:Name="PreviewSPGrid" Height="357" VerticalAlignment="Top" Margin="647,70,10,0" d:IsHidden="True">
+        <Grid x:Name="PreviewSPGrid" Height="357" VerticalAlignment="Top" Margin="647,70,10,0">
             <TextBlock TextWrapping="Wrap" Width="103" HorizontalAlignment="Center" Margin="0,10,0,322"><Run FontWeight="Bold" Text="Podgląd etykiety"/></TextBlock>
             <Grid x:Name="PreviewG" Margin="5,35,5,23"/>
         </Grid>
         <Grid x:Name="HistoryGrid" HorizontalAlignment="Left" Height="347" Margin="150,70,0,0" VerticalAlignment="Top" Width="750" d:IsHidden="True">
             <Rectangle HorizontalAlignment="Center" Height="347" VerticalAlignment="Center" Width="750" Fill="White" Visibility="Collapsed"/>
             <StackPanel Orientation="Horizontal">
-                <StackPanel Height="343" Width="391" RenderTransformOrigin="0.5,0.5">
-                    <StackPanel.RenderTransform>
+                <Grid Height="343" Width="391" RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform/>
                             <SkewTransform AngleY="-0.151"/>
                             <RotateTransform/>
                             <TranslateTransform Y="-0.463"/>
                         </TransformGroup>
-                    </StackPanel.RenderTransform>
-                    <TextBlock Height="22" TextWrapping="Wrap" Width="85" HorizontalAlignment="Center" Margin="0,5,0,20"><Run FontWeight="Bold" Language="pl-pl" Text="Import kodów"/></TextBlock>
-                    <Button x:Name="LoadFileButton" Content="Otwórz" Click="LoadFileButton_Click" Height="31" Width="106" BorderBrush="{x:Null}" FontWeight="Bold" FontSize="14" Margin="0,0,0,20">
+                    </Grid.RenderTransform>
+                    <TextBlock TextWrapping="Wrap" Width="85" HorizontalAlignment="Center" Margin="0,5,0,316"><Run FontWeight="Bold" Language="pl-pl" Text="Import kodów"/></TextBlock>
+                    <Button x:Name="LoadFileButton" Content="Otwórz" Click="LoadFileButton_Click" BorderBrush="{x:Null}" FontWeight="Bold" FontSize="14" Margin="142,47,142,265">
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
                                 <Setter Property="Cursor" Value="Hand"/>
@@ -353,13 +353,13 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <TextBlock Height="22" TextWrapping="Wrap" Width="91" Margin="0,0,0,20"><Run FontWeight="Bold" Language="pl-pl" Text="Historia"/><Run FontWeight="Bold" Text=" kodów"/></TextBlock>
-                    <ListBox x:Name="history_LB" d:ItemsSource="{d:SampleData ItemCount=5}" SelectionChanged="history_LB_SelectionChanged" Height="167" Width="207"/>
-                </StackPanel>
-                <StackPanel x:Name="CodesHistSp" Height="345" Width="347">
-                    <TextBlock Height="22" TextWrapping="Wrap" Width="91" Margin="0,5,0,20"><Run FontWeight="Bold" Language="pl-pl" Text="Historia"/><Run FontWeight="Bold" Text=" kodów"/></TextBlock>
-                    <ListBox x:Name="codesLB" d:ItemsSource="{d:SampleData ItemCount=5}" Height="231" Width="207" Margin="0,0,0,20"/>
-                    <Button x:Name="LoadToManualBtn" Content="Wydruk ręczny" Click="LoadToManualBtn_Click" Height="31" Width="126" BorderBrush="{x:Null}" FontWeight="Bold" FontSize="14">
+                    <TextBlock TextWrapping="Wrap" Margin="150,98,150,223"><Run FontWeight="Bold" Language="pl-pl" Text="Historia"/><Run FontWeight="Bold" Text=" kodów"/></TextBlock>
+                    <ListBox x:Name="history_LB" d:ItemsSource="{d:SampleData ItemCount=5}" SelectionChanged="history_LB_SelectionChanged" Margin="92,140,92,36"/>
+                </Grid>
+                <Grid x:Name="CodesHistSp" Height="345" Width="347">
+                    <TextBlock TextWrapping="Wrap" Margin="128,5,128,318"><Run FontWeight="Bold" Language="pl-pl" Text="Historia"/><Run FontWeight="Bold" Text=" kodów"/></TextBlock>
+                    <ListBox x:Name="codesLB" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="70,47,70,67"/>
+                    <Button x:Name="LoadToManualBtn" Content="Wydruk ręczny" Click="LoadToManualBtn_Click" BorderBrush="{x:Null}" FontWeight="Bold" FontSize="14" Margin="110,298,110,16">
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
                                 <Setter Property="Cursor" Value="Hand"/>
@@ -399,7 +399,7 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                </StackPanel>
+                </Grid>
             </StackPanel>
 
         </Grid>
@@ -529,51 +529,11 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <Button x:Name="previewtemplBtn" Content="Podgląd" Width="160" Height="44" Foreground="Black" FontSize="16" Click="previewtemplBtn_Click" FontWeight="Bold" Margin="75,0,0,0">
-                        <Button.Style>
-                            <Style TargetType="{x:Type Button}">
-                                <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect/>
-                                    </Setter.Value>
-                                </Setter>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="{x:Type Button}">
-                                            <Border x:Name="border" CornerRadius="20" BorderThickness="2" BorderBrush="White">
-                                                <Border.Background>
-                                                    <LinearGradientBrush>
-                                                        <GradientStop Color="DarkGray" Offset="0"/>
-                                                        <GradientStop Color="WhiteSmoke" Offset="1"/>
-                                                    </LinearGradientBrush>
-                                                </Border.Background>
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <!-- Przyciemnianie po najechaniu myszką -->
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="border" Property="Background">
-                                                        <Setter.Value>
-                                                            <LinearGradientBrush>
-                                                                <GradientStop Color="Gray" Offset="0"/>
-                                                                <GradientStop Color="DarkGray" Offset="1"/>
-                                                            </LinearGradientBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </Button.Style>
-                    </Button>
 
                 </StackPanel>
             </Grid>
         </Grid>
-        <Grid x:Name="Generate_Settings_Grid" Margin="404,70,258,120" d:IsHidden="True">
+        <Grid x:Name="Generate_Settings_Grid" Margin="404,70,258,120">
             <Rectangle HorizontalAlignment="Center" Height="352" VerticalAlignment="Center" Width="225" Fill="White"/>
             <StackPanel x:Name="___GenerateSP_" HorizontalAlignment="Center" Height="330" VerticalAlignment="Center" Width="225">
                 <StackPanel Height="82" Width="223">
