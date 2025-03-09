@@ -1,14 +1,13 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
-using System.Printing;
 using System.Windows.Input;
 
 namespace BarcodeGenerator
@@ -18,8 +17,18 @@ namespace BarcodeGenerator
         private const double MM_TO_PIXELS = 3.779528;
         private List<Grid> pages;
         private int currentPageIndex;
+
+        // Template dimensions
         private double templateWidth;
         private double templateHeight;
+        private double marginOX;
+        private double marginOY;
+        private double marginIX;
+        private double marginIY;
+        private double labelWidth;
+        private double labelHeight;
+        private int numberOfLabels;
+        private int numberOfColumns;
 
         public ResultWindow()
         {
@@ -27,9 +36,6 @@ namespace BarcodeGenerator
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             pages = new List<Grid>();
             currentPageIndex = 0;
-
-            templateWidth = double.Parse(Properties.Settings.Default.SheetWidth);
-            templateHeight = double.Parse(Properties.Settings.Default.SheetHeight);
 
             // Initialize navigation buttons
             previouspageBtn.IsEnabled = false;
@@ -40,7 +46,7 @@ namespace BarcodeGenerator
             nextpageBtn.Click += (s, e) => NavigatePage(1);
         }
 
-        public void DisplayBarcodes(List<BarcodeData> barcodes, int columns, double labelWidth, double labelHeight, string barcodeType)
+        public void DisplayBarcodes(List<BarcodeData> barcodes, int columns, double labelWidthParam, double labelHeightParam, string barcodeType)
         {
             if (barcodes == null || barcodeType == null)
             {
@@ -48,142 +54,158 @@ namespace BarcodeGenerator
                 return;
             }
 
-            // Get template settings
-            double marginOX = double.Parse(Properties.Settings.Default.MarginOX);
-            double marginOY = double.Parse(Properties.Settings.Default.MarginOY);
-            double marginIX = double.Parse(Properties.Settings.Default.MarginIX);
-            double marginIY = double.Parse(Properties.Settings.Default.MarginIY);
-            int labelsPerPage = int.Parse(Properties.Settings.Default.NumberOfLabels);
+            // Load template settings directly
+            templateWidth = double.Parse(Properties.Settings.Default.SheetWidth);
+            templateHeight = double.Parse(Properties.Settings.Default.SheetHeight);
+            marginOX = double.Parse(Properties.Settings.Default.MarginOX);
+            marginOY = double.Parse(Properties.Settings.Default.MarginOY);
+            marginIX = double.Parse(Properties.Settings.Default.MarginIX);
+            marginIY = double.Parse(Properties.Settings.Default.MarginIY);
+            labelWidth = labelWidthParam;
+            labelHeight = labelHeightParam;
+            numberOfLabels = int.Parse(Properties.Settings.Default.NumberOfLabels);
+
+            // Use the number of columns exactly as defined in the template
+            numberOfColumns = columns; // This is the key fix - ensure we use the columns from template
 
             // Set window size according to sheet dimensions with padding
             this.Width = (templateWidth * MM_TO_PIXELS) + 40;
             this.Height = (templateHeight * MM_TO_PIXELS) + 40;
 
-            // Calculate number of pages needed
-            int totalPages = (int)Math.Ceiling((double)barcodes.Count / labelsPerPage);
+            int totalPages = (int)Math.Ceiling((double)barcodes.Count / numberOfLabels);
             pages.Clear();
 
             for (int pageNum = 0; pageNum < totalPages; pageNum++)
             {
-                Grid pageGrid = CreatePageGrid(marginOX, marginOY);
+                Grid pageGrid = new Grid
+                {
+                    Width = templateWidth * MM_TO_PIXELS,
+                    Height = templateHeight * MM_TO_PIXELS,
+                    Background = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
 
-                int startIdx = pageNum * labelsPerPage;
-                int endIdx = Math.Min((pageNum + 1) * labelsPerPage, barcodes.Count);
+                int startIdx = pageNum * numberOfLabels;
+                int endIdx = Math.Min((pageNum + 1) * numberOfLabels, barcodes.Count);
                 var pageBarcodes = barcodes.Skip(startIdx).Take(endIdx - startIdx).ToList();
 
-                PopulatePageWithBarcodes(pageGrid, pageBarcodes, columns, labelWidth, labelHeight,
-                    marginIX, marginIY, barcodeType);
+                CreateLabelsGrid(pageGrid, pageBarcodes, barcodeType);
 
                 pages.Add(pageGrid);
             }
 
-            // Show first page
             ShowCurrentPage();
-
-            // Update navigation buttons
             UpdateNavigationButtons();
         }
 
-        private Grid CreatePageGrid(double marginOX, double marginOY)
+        private void CreateLabelsGrid(Grid pageGrid, List<BarcodeData> barcodes, string barcodeType)
         {
-            var grid = new Grid
+            Grid contentGrid = new Grid
             {
-                Width = templateWidth * MM_TO_PIXELS,
-                Height = templateHeight * MM_TO_PIXELS,
-                Background = Brushes.White
+                Margin = new Thickness(marginOX * MM_TO_PIXELS, marginOY * MM_TO_PIXELS,
+                                       marginOX * MM_TO_PIXELS, marginOY * MM_TO_PIXELS)
             };
 
-            grid.Margin = new Thickness(
-                marginOX * MM_TO_PIXELS,
-                marginOY * MM_TO_PIXELS,
-                marginOX * MM_TO_PIXELS,
-                marginOY * MM_TO_PIXELS
-            );
+            // Important: Calculate rows based on the exact number of columns from template
+            // and the number of barcodes for this page
+            int numberOfRows = (int)Math.Ceiling((double)barcodes.Count / numberOfColumns);
 
-            return grid;
-        }
+            contentGrid.ColumnDefinitions.Clear();
+            contentGrid.RowDefinitions.Clear();
 
-        private void PopulatePageWithBarcodes(Grid pageGrid, List<BarcodeData> barcodes,
-            int columns, double labelWidth, double labelHeight, double marginIX, double marginIY,
-            string barcodeType)
-        {
-            int rows = (int)Math.Ceiling((double)barcodes.Count / columns);
-
-            pageGrid.Children.Clear();
-            pageGrid.RowDefinitions.Clear();
-            pageGrid.ColumnDefinitions.Clear();
-
-            // Add columns with spacing
-            for (int i = 0; i < columns; i++)
+            // Create columns with exact sizing - use the template's column count
+            for (int i = 0; i < numberOfColumns; i++)
             {
-                pageGrid.ColumnDefinitions.Add(new ColumnDefinition
+                contentGrid.ColumnDefinitions.Add(new ColumnDefinition
                 {
                     Width = new GridLength(labelWidth * MM_TO_PIXELS)
                 });
-                if (i < columns - 1)
+
+                if (i < numberOfColumns - 1)
                 {
-                    pageGrid.ColumnDefinitions.Add(new ColumnDefinition
+                    contentGrid.ColumnDefinitions.Add(new ColumnDefinition
                     {
                         Width = new GridLength(marginIX * MM_TO_PIXELS)
                     });
                 }
             }
 
-            // Add rows with spacing
-            for (int i = 0; i < rows; i++)
+            // Create rows based on the calculated number needed
+            for (int i = 0; i < numberOfRows; i++)
             {
-                pageGrid.RowDefinitions.Add(new RowDefinition
+                contentGrid.RowDefinitions.Add(new RowDefinition
                 {
                     Height = new GridLength(labelHeight * MM_TO_PIXELS)
                 });
-                if (i < rows - 1)
+
+                if (i < numberOfRows - 1)
                 {
-                    pageGrid.RowDefinitions.Add(new RowDefinition
+                    contentGrid.RowDefinitions.Add(new RowDefinition
                     {
                         Height = new GridLength(marginIY * MM_TO_PIXELS)
                     });
                 }
             }
 
-            // Add barcodes to grid
+            // Place barcodes in grid using template column count for layout
             int barcodeIndex = 0;
-            bool isQRCode = barcodeType == "QR_CODE";
-
-            for (int i = 0; i < rows && barcodeIndex < barcodes.Count; i++)
+            for (int row = 0; row < numberOfRows && barcodeIndex < barcodes.Count; row++)
             {
-                for (int j = 0; j < columns && barcodeIndex < barcodes.Count; j++)
+                for (int col = 0; col < numberOfColumns && barcodeIndex < barcodes.Count; col++)
                 {
-                    var labelContent = new Grid
+                    Border labelContainer = new Border
                     {
                         Width = labelWidth * MM_TO_PIXELS,
-                        Height = labelHeight * MM_TO_PIXELS
+                        Height = labelHeight * MM_TO_PIXELS,
+                        BorderBrush = Brushes.LightGray,
+                        BorderThickness = new Thickness(0.5)
                     };
 
-                    // Calculate proportional image size
-                    double imageWidth = labelWidth * MM_TO_PIXELS * 0.9;
-                    double imageHeight = isQRCode ?
-                        Math.Min(imageWidth, labelHeight * MM_TO_PIXELS * 0.9) :
-                        labelHeight * MM_TO_PIXELS * 0.9;
+                    StackPanel panel = new StackPanel
+                    {
+                        Orientation = Orientation.Vertical
+                    };
 
-                    var barcodeImage = new Image
+                    double imageHeight = (barcodeType == "QR_CODE") ?
+                        Math.Min(labelWidth, labelHeight) * MM_TO_PIXELS * 0.8 :
+                        labelHeight * MM_TO_PIXELS * 0.7;
+
+                    Image barcodeImage = new Image
                     {
                         Source = barcodes[barcodeIndex].Image,
-                        Width = imageWidth,
                         Height = imageHeight,
                         Stretch = Stretch.Uniform,
                         VerticalAlignment = VerticalAlignment.Center,
-                        HorizontalAlignment = HorizontalAlignment.Center
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Margin = new Thickness(0, 2, 0, 0)
                     };
 
-                    labelContent.Children.Add(barcodeImage);
+                    panel.Children.Add(barcodeImage);
 
-                    Grid.SetRow(labelContent, i * 2);
-                    Grid.SetColumn(labelContent, j * 2);
-                    pageGrid.Children.Add(labelContent);
+                    if (labelHeight >= 15)
+                    {
+                        TextBlock codeText = new TextBlock
+                        {
+                            Text = barcodes[barcodeIndex].Value,
+                            TextAlignment = TextAlignment.Center,
+                            FontSize = 8,
+                            Margin = new Thickness(0, 1, 0, 2)
+                        };
+                        panel.Children.Add(codeText);
+                    }
+
+                    labelContainer.Child = panel;
+
+                    Grid.SetRow(labelContainer, row * 2); // Account for spacing rows
+                    Grid.SetColumn(labelContainer, col * 2); // Account for spacing columns
+                    contentGrid.Children.Add(labelContainer);
 
                     barcodeIndex++;
                 }
             }
+
+            pageGrid.Children.Add(contentGrid);
         }
 
         private void NavigatePage(int direction)
@@ -221,69 +243,13 @@ namespace BarcodeGenerator
 
                         using (XGraphics gfx = XGraphics.FromPdfPage(page))
                         {
-                            // Create a temporary grid with exact template dimensions
-                            var tempGrid = new Grid
-                            {
-                                Width = templateWidth * MM_TO_PIXELS,
-                                Height = templateHeight * MM_TO_PIXELS,
-                                Background = Brushes.White
-                            };
-
-                            // Copy all the content and properties from the original page
-                            foreach (var child in pageGrid.Children)
-                            {
-                                if (child is Grid labelGrid)
-                                {
-                                    var newLabelGrid = new Grid
-                                    {
-                                        Width = labelGrid.Width,
-                                        Height = labelGrid.Height,
-                                        Margin = labelGrid.Margin
-                                    };
-
-                                    // Copy column and row definitions
-                                    foreach (var col in pageGrid.ColumnDefinitions)
-                                        newLabelGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = col.Width });
-                                    foreach (var row in pageGrid.RowDefinitions)
-                                        newLabelGrid.RowDefinitions.Add(new RowDefinition { Height = row.Height });
-
-                                    // Copy the image with its properties
-                                    if (labelGrid.Children.Count > 0 && labelGrid.Children[0] is Image originalImage)
-                                    {
-                                        var newImage = new Image
-                                        {
-                                            Source = originalImage.Source,
-                                            Width = originalImage.Width,
-                                            Height = originalImage.Height,
-                                            Stretch = originalImage.Stretch,
-                                            VerticalAlignment = originalImage.VerticalAlignment,
-                                            HorizontalAlignment = originalImage.HorizontalAlignment
-                                        };
-                                        newLabelGrid.Children.Add(newImage);
-                                    }
-
-                                    Grid.SetRow(newLabelGrid, Grid.GetRow(labelGrid));
-                                    Grid.SetColumn(newLabelGrid, Grid.GetColumn(labelGrid));
-                                    tempGrid.Children.Add(newLabelGrid);
-                                }
-                            }
-
-                            // Copy grid definitions from original page
-                            foreach (var col in pageGrid.ColumnDefinitions)
-                                tempGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = col.Width });
-                            foreach (var row in pageGrid.RowDefinitions)
-                                tempGrid.RowDefinitions.Add(new RowDefinition { Height = row.Height });
-
-                            // Measure and arrange the temporary grid
-                            tempGrid.Measure(new Size(templateWidth * MM_TO_PIXELS, templateHeight * MM_TO_PIXELS));
-                            tempGrid.Arrange(new Rect(0, 0, templateWidth * MM_TO_PIXELS, templateHeight * MM_TO_PIXELS));
-
                             // Render the grid to bitmap
                             RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
                                 (int)(templateWidth * MM_TO_PIXELS),
                                 (int)(templateHeight * MM_TO_PIXELS),
                                 96, 96, PixelFormats.Pbgra32);
-                            renderBitmap.Render(tempGrid);
+
+                            renderBitmap.Render(pageGrid);
 
                             // Convert to PDF
                             BitmapEncoder encoder = new PngBitmapEncoder();
@@ -308,7 +274,6 @@ namespace BarcodeGenerator
             catch (Exception ex)
             {
                 MessageBox.Show($"Error generating PDF: {ex.Message}");
-                throw;
             }
         }
 
@@ -321,68 +286,15 @@ namespace BarcodeGenerator
                 {
                     // Configure print ticket for template size
                     var ticket = printDialog.PrintTicket;
-                    ticket.PageMediaSize = new PageMediaSize(
+                    ticket.PageMediaSize = new System.Printing.PageMediaSize(
                         templateWidth * 3.779528,  // Convert mm to hundredths of an inch
                         templateHeight * 3.779528
                     );
-                    ticket.PageOrientation = templateWidth > templateHeight ?
-                        PageOrientation.Landscape : PageOrientation.Portrait;
 
+                    // Print each page
                     foreach (var pageGrid in pages)
                     {
-                        // Create a temporary grid with exact template dimensions
-                        var tempGrid = new Grid
-                        {
-                            Width = templateWidth * MM_TO_PIXELS,
-                            Height = templateHeight * MM_TO_PIXELS,
-                            Background = Brushes.White
-                        };
-
-                        // Copy all column and row definitions
-                        foreach (var col in pageGrid.ColumnDefinitions)
-                            tempGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = col.Width });
-                        foreach (var row in pageGrid.RowDefinitions)
-                            tempGrid.RowDefinitions.Add(new RowDefinition { Height = row.Height });
-
-                        // Copy all content with exact positioning
-                        foreach (var child in pageGrid.Children)
-                        {
-                            if (child is Grid labelGrid)
-                            {
-                                var newLabelGrid = new Grid
-                                {
-                                    Width = labelGrid.Width,
-                                    Height = labelGrid.Height,
-                                    Margin = labelGrid.Margin
-                                };
-
-                                // Copy the image with its properties
-                                if (labelGrid.Children.Count > 0 && labelGrid.Children[0] is Image originalImage)
-                                {
-                                    var newImage = new Image
-                                    {
-                                        Source = originalImage.Source,
-                                        Width = originalImage.Width,
-                                        Height = originalImage.Height,
-                                        Stretch = originalImage.Stretch,
-                                        VerticalAlignment = originalImage.VerticalAlignment,
-                                        HorizontalAlignment = originalImage.HorizontalAlignment
-                                    };
-                                    newLabelGrid.Children.Add(newImage);
-                                }
-
-                                Grid.SetRow(newLabelGrid, Grid.GetRow(labelGrid));
-                                Grid.SetColumn(newLabelGrid, Grid.GetColumn(labelGrid));
-                                tempGrid.Children.Add(newLabelGrid);
-                            }
-                        }
-
-                        // Measure and arrange the grid at exact template size
-                        tempGrid.Measure(new Size(templateWidth * MM_TO_PIXELS, templateHeight * MM_TO_PIXELS));
-                        tempGrid.Arrange(new Rect(0, 0, templateWidth * MM_TO_PIXELS, templateHeight * MM_TO_PIXELS));
-
-                        // Print the page
-                        printDialog.PrintVisual(tempGrid, $"Barcode Labels - Page {pages.IndexOf(pageGrid) + 1}");
+                        printDialog.PrintVisual(pageGrid, $"Barcode Labels - Page {pages.IndexOf(pageGrid) + 1}");
                     }
 
                     MessageBox.Show($"Successfully printed {pages.Count} page(s).");
@@ -416,48 +328,11 @@ namespace BarcodeGenerator
             }
         }
 
-        private UIElement CloneGridContent(UIElement original)
-        {
-            if (original is Grid grid)
-            {
-                var newGrid = new Grid
-                {
-                    Width = grid.Width,
-                    Height = grid.Height,
-                    Margin = grid.Margin
-                };
-
-                foreach (UIElement child in grid.Children)
-                {
-                    if (child is Image img)
-                    {
-                        var newImg = new Image
-                        {
-                            Source = img.Source,
-                            Width = img.Width,
-                            Height = img.Height,
-                            Stretch = img.Stretch,
-                            VerticalAlignment = img.VerticalAlignment,
-                            HorizontalAlignment = img.HorizontalAlignment
-                        };
-                        Grid.SetRow(newImg, Grid.GetRow(img));
-                        Grid.SetColumn(newImg, Grid.GetColumn(img));
-                        newGrid.Children.Add(newImg);
-                    }
-                }
-
-                Grid.SetRow(newGrid, Grid.GetRow(grid));
-                Grid.SetColumn(newGrid, Grid.GetColumn(grid));
-                return newGrid;
-            }
-            return original;
-        }
-
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                this.DragMove(); // Przesuwa okno, gdy lewy przycisk myszy jest wciœniêty
+                this.DragMove();
             }
         }
 

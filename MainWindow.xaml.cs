@@ -666,17 +666,18 @@ namespace BarcodeGenerator
 
         private void ShowResultWindow(List<BarcodeData> barcodes, string templateName)
         {
-            // Get template settings
+            // Get template settings - ensure we're using the right value for columns
             int columns = int.Parse(Properties.Settings.Default.NumberOfColumns);
             double labelWidth = double.Parse(Properties.Settings.Default.LabelWidth);
             double labelHeight = double.Parse(Properties.Settings.Default.LabelHeight);
 
             var resultWindow = new ResultWindow();
             string barcodeType = barcodeTypeCB.SelectedItem?.ToString() ?? "UNKNOWN";
+
             resultWindow.DisplayBarcodes(barcodes, columns, labelWidth, labelHeight, barcodeType);
             resultWindow.Show();
         }
-        
+
 
         private void SaveToHistory(List<BarcodeData> barcodes, string source)
         {
