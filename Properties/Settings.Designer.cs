@@ -46,5 +46,206 @@ namespace BarcodeGenerator.Properties {
                 this["LabelTemplates"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TemplateName {
+            get {
+                return ((string)(this["TemplateName"]));
+            }
+            set {
+                this["TemplateName"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string PaperSize {
+            get {
+                return ((string)(this["PaperSize"]));
+            }
+            set {
+                this["PaperSize"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SheetWidth {
+            get {
+                return ((string)(this["SheetWidth"]));
+            }
+            set {
+                this["SheetWidth"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SheetHeight {
+            get {
+                return ((string)(this["SheetHeight"]));
+            }
+            set {
+                this["SheetHeight"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string MarginOX {
+            get {
+                return ((string)(this["MarginOX"]));
+            }
+            set {
+                this["MarginOX"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string MarginOY {
+            get {
+                return ((string)(this["MarginOY"]));
+            }
+            set {
+                this["MarginOY"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string MarginIX {
+            get {
+                return ((string)(this["MarginIX"]));
+            }
+            set {
+                this["MarginIX"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string MarginIY {
+            get {
+                return ((string)(this["MarginIY"]));
+            }
+            set {
+                this["MarginIY"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LabelWidth {
+            get {
+                return ((string)(this["LabelWidth"]));
+            }
+            set {
+                this["LabelWidth"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LabelHeight {
+            get {
+                return ((string)(this["LabelHeight"]));
+            }
+            set {
+                this["LabelHeight"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string NumberOfLabels {
+            get {
+                return ((string)(this["NumberOfLabels"]));
+            }
+            set {
+                this["NumberOfLabels"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string NumberOfColumns {
+            get {
+                return ((string)(this["NumberOfColumns"]));
+            }
+            set {
+                this["NumberOfColumns"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.Collections.Specialized.StringCollection TemplateNames {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["TemplateNames"]));
+            }
+            set {
+                this["TemplateNames"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.Collections.Specialized.StringCollection SavedBarcodes {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["SavedBarcodes"]));
+            }
+            set {
+                this["SavedBarcodes"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.Collections.Specialized.StringCollection BarcodeHistory {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["BarcodeHistory"]));
+            }
+            set {
+                this["BarcodeHistory"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastSelectedTemplate {
+            get {
+                return ((string)(this["LastSelectedTemplate"]));
+            }
+            set {
+                this["LastSelectedTemplate"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastSelectedBarcodeType {
+            get {
+                return ((string)(this["LastSelectedBarcodeType"]));
+            }
+            set {
+                this["LastSelectedBarcodeType"] = value;
+            }
+        }
     }
 }
