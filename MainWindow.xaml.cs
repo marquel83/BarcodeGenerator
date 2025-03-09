@@ -20,6 +20,8 @@ using ZXing;
 using System.IO;
 using ZXing.Rendering;
 using ZXing.Windows.Compatibility;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace BarcodeGenerator
 {
@@ -27,13 +29,29 @@ namespace BarcodeGenerator
     {
         public MainWindow()
         {
+            /* RESET CODE
+            // Reset settings first
+            Properties.Settings.Default.Reset();
+            Properties.Settings.Default.TemplateNames = new System.Collections.Specialized.StringCollection();
+            Properties.Settings.Default.SavedBarcodes = new System.Collections.Specialized.StringCollection();
+            Properties.Settings.Default.BarcodeHistory = new System.Collections.Specialized.StringCollection();
+            Properties.Settings.Default.TemplateSettingsStorage = "<Templates></Templates>";
+            Properties.Settings.Default.Save();
+
+            */
+
+
+
             InitializeComponent();
             InitializePaperSizes();
             LoadTemplateNames();
             InitializeBarcodeTypes();
-            ShowGrid(HomeGrid);
+            CollapseAllGrids();
             ShowGrid(Generate_Grid_);
             ShowGrid(Generate_Settings_Grid);
+            ShowGrid(PreviewSPGrid);
+            ShowGrid(GenNumGrid);
+            ShowGrid(GenerateBtnGrid);
             history_LB.SelectionChanged += history_LB_SelectionChanged;
             UpdateHistoryListBox();
 
@@ -209,51 +227,169 @@ namespace BarcodeGenerator
             CalculateLabelSize();
         }
 
-        private void addtemplBtn_Click(object sender, RoutedEventArgs e)
+        private void SaveTemplateSettings(string templateName)
         {
-            // Save the template information
-            var templateName = label_name_Tb.Text;
-            var paperSize = formatCb.SelectedItem.ToString();
-            var sheetWidth = sizeXTb.Text;
-            var sheetHeight = sizeYTb.Text;
-            var marginOX = mariginO_X_Tb.Text;
-            var marginOY = mariginO_Y_Tb.Text;
-            var marginIX = mariginI_X_Tb.Text;
-            var marginIY = mariginI_Y_Tb.Text;
-            var labelWidth = label_size_X_Tb.Text;
-            var labelHeight = label_size_Y_Tb.Text;
-            var numberOfLabels = no_labels_Tb.Text;
-            var numberOfColumns = no_column_Tb.Text;
-
-            // Save these settings to the application settings or a file
-            Properties.Settings.Default.TemplateName = templateName;
-            Properties.Settings.Default.PaperSize = paperSize;
-            Properties.Settings.Default.SheetWidth = sheetWidth;
-            Properties.Settings.Default.SheetHeight = sheetHeight;
-            Properties.Settings.Default.MarginOX = marginOX;
-            Properties.Settings.Default.MarginOY = marginOY;
-            Properties.Settings.Default.MarginIX = marginIX;
-            Properties.Settings.Default.MarginIY = marginIY;
-            Properties.Settings.Default.LabelWidth = labelWidth;
-            Properties.Settings.Default.LabelHeight = labelHeight;
-            Properties.Settings.Default.NumberOfLabels = numberOfLabels;
-            Properties.Settings.Default.NumberOfColumns = numberOfColumns;
-
-            // Add the template name to the list of template names
-            if (Properties.Settings.Default.TemplateNames == null)
+            try
             {
-                Properties.Settings.Default.TemplateNames = new StringCollection();
+                // Get current values from UI
+                var settings = new Dictionary<string, string>
+        {
+            { "PaperSize", formatCb.SelectedItem?.ToString() ?? "" },
+            { "SheetWidth", sizeXTb.Text },
+            { "SheetHeight", sizeYTb.Text },
+            { "MarginOX", mariginO_X_Tb.Text },
+            { "MarginOY", mariginO_Y_Tb.Text },
+            { "MarginIX", mariginI_X_Tb.Text },
+            { "MarginIY", mariginI_Y_Tb.Text },
+            { "LabelWidth", label_size_X_Tb.Text },
+            { "LabelHeight", label_size_Y_Tb.Text },
+            { "NumberOfLabels", no_labels_Tb.Text },
+            { "NumberOfColumns", no_column_Tb.Text }
+        };
+
+                // Load existing XML
+                XDocument doc;
+                if (string.IsNullOrEmpty(Properties.Settings.Default.TemplateSettingsStorage))
+                {
+                    doc = new XDocument(new XElement("Templates"));
+                }
+                else
+                {
+                    doc = XDocument.Parse(Properties.Settings.Default.TemplateSettingsStorage);
+                }
+
+                // Remove existing template if any
+                var existingTemplate = doc.Root.Elements("Template")
+                    .FirstOrDefault(e => e.Attribute("Name")?.Value == templateName);
+                if (existingTemplate != null)
+                {
+                    existingTemplate.Remove();
+                }
+
+                // Create new template element
+                var templateElement = new XElement("Template",
+                    new XAttribute("Name", templateName));
+
+                // Add settings to template
+                foreach (var setting in settings)
+                {
+                    templateElement.Add(new XElement(setting.Key, setting.Value));
+                }
+
+                // Add template to document
+                doc.Root.Add(templateElement);
+
+                // Save back to settings
+                Properties.Settings.Default.TemplateSettingsStorage = doc.ToString();
+                Properties.Settings.Default.Save();
+
+                // Debug output
+                Console.WriteLine($"Saved template {templateName} with {settings.Count} settings");
+                Console.WriteLine($"NumberOfColumns: {settings["NumberOfColumns"]}");
             }
-            if (!Properties.Settings.Default.TemplateNames.Contains(templateName))
+            catch (Exception ex)
             {
-                Properties.Settings.Default.TemplateNames.Add(templateName);
+                MessageBox.Show($"Error saving template settings: {ex.Message}");
             }
-            Properties.Settings.Default.Save();
+        }
 
-            // Reload the template names into the ComboBox
-            LoadTemplateNames();
+        private void LoadTemplateSettings(string templateName)
+        {
+            try
+            {
+                // Check if we have settings storage
+                if (string.IsNullOrEmpty(Properties.Settings.Default.TemplateSettingsStorage))
+                {
+                    MessageBox.Show($"No settings found for template: {templateName}");
+                    return;
+                }
 
-            MessageBox.Show("Template saved successfully!");
+                // Parse XML
+                XDocument doc = XDocument.Parse(Properties.Settings.Default.TemplateSettingsStorage);
+
+                // Find template
+                var template = doc.Root.Elements("Template")
+                    .FirstOrDefault(e => e.Attribute("Name")?.Value == templateName);
+
+                if (template == null)
+                {
+                    MessageBox.Show($"Template not found: {templateName}");
+                    return;
+                }
+
+                // Debug - Show what we found
+                Console.WriteLine($"Found template {templateName}");
+
+                // Update application settings directly from XML elements
+                // This ensures ResultWindow will use the correct values 
+                Properties.Settings.Default.PaperSize = GetElementValue(template, "PaperSize");
+                Properties.Settings.Default.SheetWidth = GetElementValue(template, "SheetWidth");
+                Properties.Settings.Default.SheetHeight = GetElementValue(template, "SheetHeight");
+                Properties.Settings.Default.MarginOX = GetElementValue(template, "MarginOX");
+                Properties.Settings.Default.MarginOY = GetElementValue(template, "MarginOY");
+                Properties.Settings.Default.MarginIX = GetElementValue(template, "MarginIX");
+                Properties.Settings.Default.MarginIY = GetElementValue(template, "MarginIY");
+                Properties.Settings.Default.LabelWidth = GetElementValue(template, "LabelWidth");
+                Properties.Settings.Default.LabelHeight = GetElementValue(template, "LabelHeight");
+                Properties.Settings.Default.NumberOfLabels = GetElementValue(template, "NumberOfLabels");
+                Properties.Settings.Default.NumberOfColumns = GetElementValue(template, "NumberOfColumns");
+
+                // Save settings
+                Properties.Settings.Default.Save();
+
+                // Debug - Log the loaded values
+                Console.WriteLine($"Loaded NumberOfColumns: {Properties.Settings.Default.NumberOfColumns}");
+
+                // Update UI with loaded settings if needed
+                UpdateUIFromSettings();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading template settings: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        private string GetElementValue(XElement parent, string elementName, string defaultValue = "")
+        {
+            var element = parent.Element(elementName);
+            return element != null ? element.Value : defaultValue;
+        }
+
+        private void UpdateUIFromSettings()
+        {
+            // This updates the UI based on loaded settings
+            try
+            {
+                // Find the paper size in the ComboBox
+                string paperSize = Properties.Settings.Default.PaperSize;
+                if (!string.IsNullOrEmpty(paperSize))
+                {
+                    for (int i = 0; i < formatCb.Items.Count; i++)
+                    {
+                        if (formatCb.Items[i].ToString() == paperSize)
+                        {
+                            formatCb.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                // Update text boxes
+                sizeXTb.Text = Properties.Settings.Default.SheetWidth;
+                sizeYTb.Text = Properties.Settings.Default.SheetHeight;
+                mariginO_X_Tb.Text = Properties.Settings.Default.MarginOX;
+                mariginO_Y_Tb.Text = Properties.Settings.Default.MarginOY;
+                mariginI_X_Tb.Text = Properties.Settings.Default.MarginIX;
+                mariginI_Y_Tb.Text = Properties.Settings.Default.MarginIY;
+                label_size_X_Tb.Text = Properties.Settings.Default.LabelWidth;
+                label_size_Y_Tb.Text = Properties.Settings.Default.LabelHeight;
+                no_labels_Tb.Text = Properties.Settings.Default.NumberOfLabels;
+                no_column_Tb.Text = Properties.Settings.Default.NumberOfColumns;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating UI: {ex.Message}");
+            }
         }
 
         private void LoadTemplateNames()
@@ -276,15 +412,7 @@ namespace BarcodeGenerator
             labeltmplCB.SelectionChanged += LabelTmplCB_SelectionChanged;
         }
 
-        private void LabelTmplCB_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (labeltmplCB.SelectedItem != null)
-            {
-                // Save the selected template
-                Properties.Settings.Default.LastSelectedTemplate = labeltmplCB.SelectedItem.ToString();
-                Properties.Settings.Default.Save();
-            }
-        }
+        
 
         private void previewtemplBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -395,7 +523,7 @@ namespace BarcodeGenerator
                 List<string> barcodesToGenerate = new List<string>();
 
                 // Handle HomeGrid scenario - Generate unique barcodes
-                if (HomeGrid.Visibility == Visibility.Visible)
+                if (ManualGrid.Visibility == Visibility.Collapsed)
                 {
                     if (!int.TryParse(NumberTB.Text, out int numberOfBarcodes) || numberOfBarcodes <= 0)
                     {
@@ -439,7 +567,7 @@ namespace BarcodeGenerator
                 List<BarcodeData> barcodes = GenerateBarcodeImages(barcodesToGenerate, barcodeType);
 
                 // Save to history only if in HomeGrid mode
-                if (HomeGrid.Visibility == Visibility.Visible)
+                if (ManualGrid.Visibility == Visibility.Collapsed)
                 {
                     SaveToHistory(barcodes, "Generated");
                 }
@@ -663,10 +791,61 @@ namespace BarcodeGenerator
             }
         }
 
+        
+
+        private void addtemplBtn_Click(object sender, RoutedEventArgs e)
+        {
+            // Save the template information
+            var templateName = label_name_Tb.Text;
+
+            if (string.IsNullOrWhiteSpace(templateName))
+            {
+                MessageBox.Show("Please enter a template name.");
+                return;
+            }
+
+            // Add the template name to the list of template names
+            if (Properties.Settings.Default.TemplateNames == null)
+            {
+                Properties.Settings.Default.TemplateNames = new StringCollection();
+            }
+            if (!Properties.Settings.Default.TemplateNames.Contains(templateName))
+            {
+                Properties.Settings.Default.TemplateNames.Add(templateName);
+            }
+
+            // Save the custom template settings
+            SaveTemplateSettings(templateName);
+
+            // Update LastSelectedTemplate
+            Properties.Settings.Default.LastSelectedTemplate = templateName;
+            Properties.Settings.Default.Save();
+
+            // Reload the template names into the ComboBox
+            LoadTemplateNames();
+
+            MessageBox.Show("Template saved successfully!");
+        }
+
+        private void LabelTmplCB_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (labeltmplCB.SelectedItem != null)
+            {
+                string selectedTemplate = labeltmplCB.SelectedItem.ToString();
+
+                // Save the selected template name
+                Properties.Settings.Default.LastSelectedTemplate = selectedTemplate;
+                Properties.Settings.Default.Save();
+
+                // Load this template's specific settings
+                LoadTemplateSettings(selectedTemplate);
+            }
+        }
 
         private void ShowResultWindow(List<BarcodeData> barcodes, string templateName)
         {
-            // Get template settings - ensure we're using the right value for columns
+            // Get the number of columns directly from settings
+            // This ensures we're using the value from the template that was loaded
             int columns = int.Parse(Properties.Settings.Default.NumberOfColumns);
             double labelWidth = double.Parse(Properties.Settings.Default.LabelWidth);
             double labelHeight = double.Parse(Properties.Settings.Default.LabelHeight);
@@ -726,51 +905,93 @@ namespace BarcodeGenerator
             }
         }
 
+        private void CollapseAllGrids()
+        {
+            ManualGrid.Visibility = Visibility.Collapsed;
+            SettingsGrid.Visibility = Visibility.Collapsed;
+            HistoryGrid.Visibility = Visibility.Collapsed;
+            TplBtnSpGrid.Visibility = Visibility.Collapsed;
+            GenNumGrid.Visibility = Visibility.Collapsed;
+            Generate_Grid_.Visibility = Visibility.Collapsed;
+            SettingsBtnGrid.Visibility = Visibility.Collapsed;
+            GenerateBtnGrid.Visibility = Visibility.Collapsed;
+            Generate_Settings_Grid.Visibility = Visibility.Collapsed;
+            PreviewSPGrid.Visibility = Visibility.Collapsed;
+            TemplateSPGrid.Visibility = Visibility.Collapsed;
+        }
 
         private void ShowGrid(Grid activeGrid)
         {
-            //HomeGrid.Visibility = Visibility.Collapsed;
-            //ManualGrid.Visibility = Visibility.Collapsed;
-            SettingsGrid.Visibility = Visibility.Collapsed;
-            HistoryGrid.Visibility = Visibility.Collapsed;
-
             activeGrid.Visibility = Visibility.Visible;
         }
 
         private void HomeButton_Click(object sender, RoutedEventArgs e)
         {
-            ManualGrid.Visibility = Visibility.Collapsed;
-            ShowGrid(HomeGrid);
+            CollapseAllGrids();
             ShowGrid(Generate_Grid_);
             ShowGrid(Generate_Settings_Grid);
-            GenNumSP.Visibility = Visibility.Visible;
+            ShowGrid(PreviewSPGrid);
+            ShowGrid(GenNumGrid);
+            ShowGrid(GenerateBtnGrid);
         }
 
         private void ManualButton_Click(object sender, RoutedEventArgs e)
         {
-            HomeGrid.Visibility = Visibility.Collapsed;
+            CollapseAllGrids();
             ShowGrid(ManualGrid);
             ShowGrid(Generate_Grid_);
             ShowGrid(Generate_Settings_Grid);
-            GenNumSP.Visibility = Visibility.Hidden;
+            ShowGrid(PreviewSPGrid);
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            HomeGrid.Visibility = Visibility.Collapsed;
-            ManualGrid.Visibility = Visibility.Collapsed;
-            Generate_Grid_.Visibility = Visibility.Collapsed;
-            Generate_Settings_Grid.Visibility = Visibility.Collapsed;
+            CollapseAllGrids();
             ShowGrid(SettingsGrid);
+            ShowGrid(SettingsBtnGrid);
 
         }
 
+        private void addBtn_Click(object sender, RoutedEventArgs e)
+        {
+            ShowGrid(SettingsGrid);
+            SettingsBtnGrid.Visibility = Visibility.Collapsed;
+            ShowGrid(TemplateSPGrid);
+            ShowGrid(Generate_Grid_);
+            ShowGrid(TplBtnSpGrid);
+            ShowGrid(PreviewSPGrid);
+
+        }
+
+        private void editBtn_Click(object sender, RoutedEventArgs e)
+        {
+            ShowGrid(SettingsGrid);
+            SettingsBtnGrid.Visibility = Visibility.Collapsed;
+            ShowGrid(TemplateSPGrid);
+            ShowGrid(Generate_Grid_);
+            ShowGrid(TplBtnSpGrid);
+            ShowGrid(PreviewSPGrid);
+        }
+
+        private void deleteBtn_Click(object sender, RoutedEventArgs e)
+        {
+            ShowGrid(SettingsGrid);
+            SettingsBtnGrid.Visibility = Visibility.Collapsed;
+            ShowGrid(TemplateSPGrid);
+            ShowGrid(Generate_Grid_);
+            ShowGrid(TplBtnSpGrid);
+            ShowGrid(PreviewSPGrid);
+        }
+
+        private void LoadToManualBtn_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+
         private void HistoryButton_Click(object sender, RoutedEventArgs e)
         {
-            HomeGrid.Visibility = Visibility.Collapsed;
-            ManualGrid.Visibility = Visibility.Collapsed;
-            Generate_Grid_.Visibility = Visibility.Collapsed;
-            Generate_Settings_Grid.Visibility = Visibility.Collapsed;
+            CollapseAllGrids();
             ShowGrid(HistoryGrid);
 
         }

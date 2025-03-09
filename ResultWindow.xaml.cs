@@ -30,6 +30,9 @@ namespace BarcodeGenerator
         private int numberOfLabels;
         private int numberOfColumns;
 
+        // Hide barcode text by default
+        private bool showBarcodeText = false;
+
         public ResultWindow()
         {
             InitializeComponent();
@@ -154,49 +157,75 @@ namespace BarcodeGenerator
             {
                 for (int col = 0; col < numberOfColumns && barcodeIndex < barcodes.Count; col++)
                 {
+                    // Create a container for the barcode with full label dimensions
                     Border labelContainer = new Border
                     {
                         Width = labelWidth * MM_TO_PIXELS,
                         Height = labelHeight * MM_TO_PIXELS,
                         BorderBrush = Brushes.LightGray,
-                        BorderThickness = new Thickness(0.5)
+                        BorderThickness = new Thickness(0.5),
+                        // Center content both horizontally and vertically
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
                     };
 
-                    StackPanel panel = new StackPanel
+                    // For better centering, use a Grid instead of StackPanel
+                    Grid barcodeGrid = new Grid
                     {
-                        Orientation = Orientation.Vertical
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        VerticalAlignment = VerticalAlignment.Stretch
                     };
 
-                    double imageHeight = (barcodeType == "QR_CODE") ?
-                        Math.Min(labelWidth, labelHeight) * MM_TO_PIXELS * 0.8 :
-                        labelHeight * MM_TO_PIXELS * 0.7;
+                    // Calculate image size based on barcode type
+                    double imageWidth, imageHeight;
 
+                    if (barcodeType == "QR_CODE")
+                    {
+                        // For QR codes, make it square and sized appropriately to fit within label
+                        double dimension = Math.Min(labelWidth, labelHeight) * MM_TO_PIXELS * 0.9;
+                        imageWidth = dimension;
+                        imageHeight = dimension;
+                    }
+                    else
+                    {
+                        // For linear barcodes, use width of the label with some padding
+                        imageWidth = labelWidth * MM_TO_PIXELS * 0.95;
+                        imageHeight = labelHeight * MM_TO_PIXELS * 0.7;
+                    }
+
+                    // Create the barcode image with proper centering
                     Image barcodeImage = new Image
                     {
                         Source = barcodes[barcodeIndex].Image,
+                        Width = imageWidth,
                         Height = imageHeight,
-                        Stretch = Stretch.Uniform,
-                        VerticalAlignment = VerticalAlignment.Center,
+                        Stretch = Stretch.Uniform, // Keep aspect ratio
                         HorizontalAlignment = HorizontalAlignment.Center,
-                        Margin = new Thickness(0, 2, 0, 0)
+                        VerticalAlignment = VerticalAlignment.Center
                     };
 
-                    panel.Children.Add(barcodeImage);
+                    // Add the barcode image to the grid
+                    barcodeGrid.Children.Add(barcodeImage);
 
-                    if (labelHeight >= 15)
+                    // Only add barcode text if enabled
+                    if (showBarcodeText)
                     {
                         TextBlock codeText = new TextBlock
                         {
                             Text = barcodes[barcodeIndex].Value,
                             TextAlignment = TextAlignment.Center,
                             FontSize = 8,
-                            Margin = new Thickness(0, 1, 0, 2)
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Bottom,
+                            Margin = new Thickness(0, 0, 0, 4)
                         };
-                        panel.Children.Add(codeText);
+                        barcodeGrid.Children.Add(codeText);
                     }
 
-                    labelContainer.Child = panel;
+                    // Add the grid to the container
+                    labelContainer.Child = barcodeGrid;
 
+                    // Place in the content grid
                     Grid.SetRow(labelContainer, row * 2); // Account for spacing rows
                     Grid.SetColumn(labelContainer, col * 2); // Account for spacing columns
                     contentGrid.Children.Add(labelContainer);

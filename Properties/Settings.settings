@@ -59,5 +59,11 @@
     <Setting Name="LastSelectedBarcodeType" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="Template_Settings" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TemplateSettingsStorage" Type="System.String" Scope="User">
+      <Value Profile="(Default)">&lt;Templates&gt;&lt;/Templates&gt;</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

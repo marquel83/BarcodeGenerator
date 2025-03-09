@@ -247,5 +247,28 @@ namespace BarcodeGenerator.Properties {
                 this["LastSelectedBarcodeType"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.Collections.Specialized.StringCollection Template_Settings {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["Template_Settings"]));
+            }
+            set {
+                this["Template_Settings"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("<Templates></Templates>")]
+        public string TemplateSettingsStorage {
+            get {
+                return ((string)(this["TemplateSettingsStorage"]));
+            }
+            set {
+                this["TemplateSettingsStorage"] = value;
+            }
+        }
     }
 }
