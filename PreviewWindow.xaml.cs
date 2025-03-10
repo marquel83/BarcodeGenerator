@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
@@ -125,6 +126,14 @@ namespace BarcodeGenerator
 
             // Center the sheet in the window
             PreviewGrid.Children.Add(sheetBorder);
+        }
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                this.DragMove(); // Przesuwa okno, gdy lewy przycisk myszy jest wciśnięty
+            }
         }
 
         private void PreviewExitButton_Click(object sender, RoutedEventArgs e)

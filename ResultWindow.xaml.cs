@@ -18,6 +18,9 @@ namespace BarcodeGenerator
         private List<Grid> pages;
         private int currentPageIndex;
 
+        private List<BarcodeData> currentBarcodes;
+        private string currentBarcodeType;
+
         // Template dimensions
         private double templateWidth;
         private double templateHeight;
@@ -57,6 +60,10 @@ namespace BarcodeGenerator
                 return;
             }
 
+            // Store the current barcode data for PDF generation
+            currentBarcodes = new List<BarcodeData>(barcodes);
+            currentBarcodeType = barcodeType;
+
             // Load template settings directly
             templateWidth = double.Parse(Properties.Settings.Default.SheetWidth);
             templateHeight = double.Parse(Properties.Settings.Default.SheetHeight);
@@ -70,8 +77,6 @@ namespace BarcodeGenerator
 
             // Use the number of columns exactly as defined in the template
             numberOfColumns = columns;
-
-            // No window sizing - we'll rely on the ScrollViewer to handle content that's larger than the window
 
             int totalPages = (int)Math.Ceiling((double)barcodes.Count / numberOfLabels);
             pages.Clear();
@@ -258,19 +263,48 @@ namespace BarcodeGenerator
         {
             try
             {
+                // Create a PDF document with correct settings
                 using (PdfDocument document = new PdfDocument())
                 {
-                    foreach (var pageGrid in pages)
+                    // Process each page separately
+                    int totalPages = (int)Math.Ceiling((double)currentBarcodes.Count / numberOfLabels);
+
+                    for (int pageNum = 0; pageNum < totalPages; pageNum++)
                     {
-                        PdfPage page = document.AddPage();
+                        // Create PDF page with exact template dimensions
+                        PdfPage pdfPage = document.AddPage();
+                        pdfPage.Width = XUnit.FromMillimeter(templateWidth);
+                        pdfPage.Height = XUnit.FromMillimeter(templateHeight);
 
-                        // Set exact page size from template
-                        page.Width = XUnit.FromMillimeter(templateWidth);
-                        page.Height = XUnit.FromMillimeter(templateHeight);
-
-                        using (XGraphics gfx = XGraphics.FromPdfPage(page))
+                        using (XGraphics gfx = XGraphics.FromPdfPage(pdfPage))
                         {
-                            // Render the grid to bitmap
+                            // Create a clean grid for this page's rendering
+                            Grid pageGrid = new Grid
+                            {
+                                Width = templateWidth * MM_TO_PIXELS,
+                                Height = templateHeight * MM_TO_PIXELS,
+                                Background = Brushes.White,
+                                // Important: Use Left/Top alignment for accurate positioning
+                                HorizontalAlignment = HorizontalAlignment.Left,
+                                VerticalAlignment = VerticalAlignment.Top,
+                                // No margin to avoid shifts
+                                Margin = new Thickness(0)
+                            };
+
+                            // Get the barcodes for this page
+                            int startIdx = pageNum * numberOfLabels;
+                            int endIdx = Math.Min((pageNum + 1) * numberOfLabels, currentBarcodes.Count);
+                            var pageBarcodes = currentBarcodes.Skip(startIdx).Take(endIdx - startIdx).ToList();
+
+                            // Create the grid layout without any shifts
+                            CreatePdfLabelsGrid(pageGrid, pageBarcodes, currentBarcodeType);
+
+                            // Ensure layout is calculated
+                            pageGrid.Measure(new Size(templateWidth * MM_TO_PIXELS, templateHeight * MM_TO_PIXELS));
+                            pageGrid.Arrange(new Rect(0, 0, templateWidth * MM_TO_PIXELS, templateHeight * MM_TO_PIXELS));
+                            pageGrid.UpdateLayout();
+
+                            // Render to bitmap at the exact size
                             RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
                                 (int)(templateWidth * MM_TO_PIXELS),
                                 (int)(templateHeight * MM_TO_PIXELS),
@@ -278,18 +312,20 @@ namespace BarcodeGenerator
 
                             renderBitmap.Render(pageGrid);
 
-                            // Convert to PDF
+                            // Convert to image for PDF
                             BitmapEncoder encoder = new PngBitmapEncoder();
                             encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
 
                             using (var stream = new MemoryStream())
                             {
                                 encoder.Save(stream);
+                                stream.Position = 0; // Reset stream position
+
                                 using (var imageStream = new MemoryStream(stream.ToArray()))
                                 {
                                     XImage image = XImage.FromStream(() => imageStream);
-                                    // Draw the image at the exact size of the PDF page
-                                    gfx.DrawImage(image, 0, 0, page.Width, page.Height);
+                                    // Draw at exact dimensions with no offsets
+                                    gfx.DrawImage(image, 0, 0, pdfPage.Width, pdfPage.Height);
                                 }
                             }
                         }
@@ -302,6 +338,254 @@ namespace BarcodeGenerator
             {
                 MessageBox.Show($"Error generating PDF: {ex.Message}");
             }
+        }
+
+        private void CreatePdfLabelsGrid(Grid pageGrid, List<BarcodeData> barcodes, string barcodeType)
+        {
+            Grid contentGrid = new Grid
+            {
+                Margin = new Thickness(marginOX * MM_TO_PIXELS, marginOY * MM_TO_PIXELS,
+                                       marginOX * MM_TO_PIXELS, marginOY * MM_TO_PIXELS),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            int numberOfRows = (int)Math.Ceiling((double)barcodes.Count / numberOfColumns);
+
+            contentGrid.ColumnDefinitions.Clear();
+            contentGrid.RowDefinitions.Clear();
+
+            // Create columns
+            for (int i = 0; i < numberOfColumns; i++)
+            {
+                contentGrid.ColumnDefinitions.Add(new ColumnDefinition
+                {
+                    Width = new GridLength(labelWidth * MM_TO_PIXELS)
+                });
+
+                if (i < numberOfColumns - 1)
+                {
+                    contentGrid.ColumnDefinitions.Add(new ColumnDefinition
+                    {
+                        Width = new GridLength(marginIX * MM_TO_PIXELS)
+                    });
+                }
+            }
+
+            // Create rows
+            for (int i = 0; i < numberOfRows; i++)
+            {
+                contentGrid.RowDefinitions.Add(new RowDefinition
+                {
+                    Height = new GridLength(labelHeight * MM_TO_PIXELS)
+                });
+
+                if (i < numberOfRows - 1)
+                {
+                    contentGrid.RowDefinitions.Add(new RowDefinition
+                    {
+                        Height = new GridLength(marginIY * MM_TO_PIXELS)
+                    });
+                }
+            }
+
+            // Place barcodes in grid
+            int barcodeIndex = 0;
+            for (int row = 0; row < numberOfRows && barcodeIndex < barcodes.Count; row++)
+            {
+                for (int col = 0; col < numberOfColumns && barcodeIndex < barcodes.Count; col++)
+                {
+                    Border labelContainer = new Border
+                    {
+                        Width = labelWidth * MM_TO_PIXELS,
+                        Height = labelHeight * MM_TO_PIXELS,
+                        BorderBrush = Brushes.LightGray,
+                        BorderThickness = new Thickness(0.5),
+                        // Use Left/Top alignment for precision
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        VerticalAlignment = VerticalAlignment.Top
+                    };
+
+                    Grid barcodeGrid = new Grid
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    double imageWidth, imageHeight;
+
+                    if (barcodeType == "QR_CODE")
+                    {
+                        double dimension = Math.Min(labelWidth, labelHeight) * MM_TO_PIXELS * 0.9;
+                        imageWidth = dimension;
+                        imageHeight = dimension;
+                    }
+                    else
+                    {
+                        imageWidth = labelWidth * MM_TO_PIXELS * 0.95;
+                        imageHeight = labelHeight * MM_TO_PIXELS * 0.7;
+                    }
+
+                    Image barcodeImage = new Image
+                    {
+                        Source = barcodes[barcodeIndex].Image,
+                        Width = imageWidth,
+                        Height = imageHeight,
+                        Stretch = Stretch.Uniform,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    barcodeGrid.Children.Add(barcodeImage);
+
+                    if (showBarcodeText)
+                    {
+                        TextBlock codeText = new TextBlock
+                        {
+                            Text = barcodes[barcodeIndex].Value,
+                            TextAlignment = TextAlignment.Center,
+                            FontSize = 8,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Bottom,
+                            Margin = new Thickness(0, 0, 0, 4)
+                        };
+                        barcodeGrid.Children.Add(codeText);
+                    }
+
+                    labelContainer.Child = barcodeGrid;
+
+                    Grid.SetRow(labelContainer, row * 2);
+                    Grid.SetColumn(labelContainer, col * 2);
+                    contentGrid.Children.Add(labelContainer);
+
+                    barcodeIndex++;
+                }
+            }
+
+            pageGrid.Children.Add(contentGrid);
+        }
+
+        // Create a specialized version of CreateLabelsGrid just for PDF generation
+        private void CreateLabelsGridForPdf(Grid pageGrid, List<BarcodeData> barcodes, string barcodeType)
+        {
+            Grid contentGrid = new Grid
+            {
+                Margin = new Thickness(marginOX * MM_TO_PIXELS, marginOY * MM_TO_PIXELS,
+                                      marginOX * MM_TO_PIXELS, marginOY * MM_TO_PIXELS),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            int numberOfRows = (int)Math.Ceiling((double)barcodes.Count / numberOfColumns);
+
+            // Create columns with exact sizing
+            for (int i = 0; i < numberOfColumns; i++)
+            {
+                contentGrid.ColumnDefinitions.Add(new ColumnDefinition
+                {
+                    Width = new GridLength(labelWidth * MM_TO_PIXELS)
+                });
+
+                if (i < numberOfColumns - 1)
+                {
+                    contentGrid.ColumnDefinitions.Add(new ColumnDefinition
+                    {
+                        Width = new GridLength(marginIX * MM_TO_PIXELS)
+                    });
+                }
+            }
+
+            // Create rows
+            for (int i = 0; i < numberOfRows; i++)
+            {
+                contentGrid.RowDefinitions.Add(new RowDefinition
+                {
+                    Height = new GridLength(labelHeight * MM_TO_PIXELS)
+                });
+
+                if (i < numberOfRows - 1)
+                {
+                    contentGrid.RowDefinitions.Add(new RowDefinition
+                    {
+                        Height = new GridLength(marginIY * MM_TO_PIXELS)
+                    });
+                }
+            }
+
+            // Place barcodes in grid
+            int barcodeIndex = 0;
+            for (int row = 0; row < numberOfRows && barcodeIndex < barcodes.Count; row++)
+            {
+                for (int col = 0; col < numberOfColumns && barcodeIndex < barcodes.Count; col++)
+                {
+                    Border labelContainer = new Border
+                    {
+                        Width = labelWidth * MM_TO_PIXELS,
+                        Height = labelHeight * MM_TO_PIXELS,
+                        BorderBrush = Brushes.LightGray,
+                        BorderThickness = new Thickness(0.5),
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        VerticalAlignment = VerticalAlignment.Top
+                    };
+
+                    Grid barcodeGrid = new Grid
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    // Calculate image size based on barcode type
+                    double imageWidth, imageHeight;
+
+                    if (barcodeType == "QR_CODE")
+                    {
+                        double dimension = Math.Min(labelWidth, labelHeight) * MM_TO_PIXELS * 0.9;
+                        imageWidth = dimension;
+                        imageHeight = dimension;
+                    }
+                    else
+                    {
+                        imageWidth = labelWidth * MM_TO_PIXELS * 0.95;
+                        imageHeight = labelHeight * MM_TO_PIXELS * 0.7;
+                    }
+
+                    Image barcodeImage = new Image
+                    {
+                        Source = barcodes[barcodeIndex].Image,
+                        Width = imageWidth,
+                        Height = imageHeight,
+                        Stretch = Stretch.Uniform,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    barcodeGrid.Children.Add(barcodeImage);
+
+                    if (showBarcodeText)
+                    {
+                        TextBlock codeText = new TextBlock
+                        {
+                            Text = barcodes[barcodeIndex].Value,
+                            TextAlignment = TextAlignment.Center,
+                            FontSize = 8,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Bottom,
+                            Margin = new Thickness(0, 0, 0, 4)
+                        };
+                        barcodeGrid.Children.Add(codeText);
+                    }
+
+                    labelContainer.Child = barcodeGrid;
+
+                    Grid.SetRow(labelContainer, row * 2);
+                    Grid.SetColumn(labelContainer, col * 2);
+                    contentGrid.Children.Add(labelContainer);
+
+                    barcodeIndex++;
+                }
+            }
+
+            pageGrid.Children.Add(contentGrid);
         }
 
         private void Print_Click(object sender, RoutedEventArgs e)
