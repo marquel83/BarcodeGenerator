@@ -1,10 +1,7 @@
 using Microsoft.Win32;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -21,6 +18,8 @@ namespace BarcodeGenerator
     {
         // Private fields
         private List<BarcodeData> barcodes;
+        private List<List<BarcodeData>> barcodePages;
+        private int currentPageIndex = 0;
         private int numberOfColumns;
         private int numberOfRows;
         private double labelWidth;
@@ -31,9 +30,10 @@ namespace BarcodeGenerator
         private double pageHeight;
         private string currentBarcodeType;
         private bool showBarcodeText;
+        private bool showBorders = true;
 
         // Constructor
-        public ResultWindow(List<BarcodeData> barcodeData, string barcodeType, int columns, double lWidth, double lHeight, double mIX, double mIY, double pWidth, double pHeight, bool displayBarcodeText)
+        public ResultWindow(List<BarcodeData> barcodeData, string barcodeType, int columns, double lWidth, double lHeight, double mIX, double mIY, double pWidth, double pHeight, bool displayBarcodeText, bool showBordersInitial = true)
         {
             InitializeComponent();
 
@@ -48,6 +48,8 @@ namespace BarcodeGenerator
             pageWidth = pWidth;
             pageHeight = pHeight;
             showBarcodeText = displayBarcodeText;
+            showBorders = showBordersInitial;
+            showBordersCheckbox.IsChecked = showBorders;
 
             // In the ResultWindow constructor
             this.Width = pageWidth * 3.8; // Convert mm to screen pixels (approximate)
@@ -56,11 +58,84 @@ namespace BarcodeGenerator
             // Calculate number of rows based on barcode count and columns
             numberOfRows = (int)Math.Floor(((double)pageHeight - marginIY) / (labelHeight + marginIY));
 
+            // Split barcodes into pages
+            barcodePages = SplitBarcodesIntoPages(barcodes);
+
+            // Setup navigation buttons
+            SetupNavigationButtons();
+
             // Initialize QuestPDF license if needed
             QuestPDF.Settings.License = LicenseType.Community;
 
             // Display the barcodes in the window
+            DisplayCurrentPage();
+        }
+
+        private void ShowBordersCheckbox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            showBorders = showBordersCheckbox.IsChecked ?? true;
+
+            // Refresh the display to show/hide borders
             DisplayBarcodes();
+        }
+
+        // Add click event handlers for navigation buttons
+        private void PreviousPage_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentPageIndex > 0)
+            {
+                currentPageIndex--;
+                DisplayBarcodes(); // This will now use the current page index
+                UpdateNavigationButtonState();
+            }
+        }
+
+        private void NextPage_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentPageIndex < barcodePages.Count - 1)
+            {
+                currentPageIndex++;
+                DisplayBarcodes(); // This will now use the current page index
+                UpdateNavigationButtonState();
+            }
+        }
+
+        // Method to set up the navigation buttons
+        private void SetupNavigationButtons()
+        {
+            // Connect buttons to their click handlers
+            previouspageBtn.Click += PreviousPage_Click;
+            nextpageBtn.Click += NextPage_Click;
+
+            // Initially update button visibility
+            UpdateNavigationButtonState();
+        }
+
+        // Update button enabled state based on current page
+        private void UpdateNavigationButtonState()
+        {
+            // If only one page or no pages, disable both buttons
+            if (barcodePages == null || barcodePages.Count <= 1)
+            {
+                previouspageBtn.IsEnabled = false;
+                nextpageBtn.IsEnabled = false;
+                return;
+            }
+
+            // Update button states based on current page
+            previouspageBtn.IsEnabled = currentPageIndex > 0;
+            nextpageBtn.IsEnabled = currentPageIndex < barcodePages.Count - 1;
+        }
+
+        // Display the current page of barcodes
+        private void DisplayCurrentPage()
+        {
+            if (barcodePages.Count > 0 && currentPageIndex >= 0 && currentPageIndex < barcodePages.Count)
+            {
+                List<BarcodeData> currentPageBarcodes = barcodePages[currentPageIndex];
+                DisplayBarcodes(currentPageBarcodes);
+                UpdateNavigationButtonState();
+            }
         }
 
         // Window mouse down event handler
@@ -71,7 +146,27 @@ namespace BarcodeGenerator
         }
 
         // Display barcodes in the UI
+        private void DisplayBarcodes(List<BarcodeData> pageOfBarcodes)
+        {
+            DisplayBarcodesOnePage(pageOfBarcodes);
+        }
+
+        // Call to support existing functionality
         private void DisplayBarcodes()
+        {
+            if (barcodePages != null && barcodePages.Count > 0)
+            {
+                // Display the current page of barcodes
+                DisplayBarcodes(barcodePages[currentPageIndex]);
+            }
+            else if (barcodes != null)
+            {
+                // Fallback to original behavior if something went wrong with page splitting
+                DisplayBarcodesOnePage(barcodes);
+            }
+        }
+
+        private void DisplayBarcodesOnePage(List<BarcodeData> pageOfBarcodes)
         {
             // Clear any existing content
             BarcodesGrid.Children.Clear();
@@ -79,7 +174,7 @@ namespace BarcodeGenerator
             BarcodesGrid.ColumnDefinitions.Clear();
 
             // Calculate dimensions and rows
-            int numberOfRows = (int)Math.Ceiling((double)barcodes.Count / numberOfColumns);
+            int displayRows = (int)Math.Ceiling((double)pageOfBarcodes.Count / numberOfColumns);
 
             // Set up grid dimensions to match the paper size
             BarcodesGrid.Width = pageWidth * 3.8; // Convert from mm to pixels
@@ -87,16 +182,16 @@ namespace BarcodeGenerator
 
             // Create outer margins
             double marginOX = (pageWidth - (numberOfColumns * labelWidth + (numberOfColumns - 1) * marginIX)) / 2;
-            double marginOY = (pageHeight - (numberOfRows * labelHeight + (numberOfRows - 1) * marginIY)) / 2;
+            double marginOY = (pageHeight - (displayRows * labelHeight + (displayRows - 1) * marginIY)) / 2;
 
             // Create rows for labels and spacing
-            for (int i = 0; i < numberOfRows; i++)
+            for (int i = 0; i < displayRows; i++)
             {
                 // Add label row
                 BarcodesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(labelHeight * 3.8) });
 
                 // Add spacing row if not the last row
-                if (i < numberOfRows - 1)
+                if (i < displayRows - 1)
                 {
                     BarcodesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(marginIY * 3.8) });
                 }
@@ -117,16 +212,16 @@ namespace BarcodeGenerator
 
             // Add barcodes to the grid
             int barcodeIndex = 0;
-            for (int row = 0; row < numberOfRows && barcodeIndex < barcodes.Count; row++)
+            for (int row = 0; row < displayRows && barcodeIndex < pageOfBarcodes.Count; row++)
             {
-                for (int col = 0; col < numberOfColumns && barcodeIndex < barcodes.Count; col++)
+                for (int col = 0; col < numberOfColumns && barcodeIndex < pageOfBarcodes.Count; col++)
                 {
-                    var barcode = barcodes[barcodeIndex];
+                    var barcode = pageOfBarcodes[barcodeIndex];
 
                     // Create a border for the label
                     var border = new Border
                     {
-                        BorderBrush = Brushes.Black,
+                        BorderBrush = showBorders ? Brushes.Black : Brushes.Transparent,
                         BorderThickness = new Thickness(0.5),
                         Padding = new Thickness(2)
                     };
@@ -197,11 +292,11 @@ namespace BarcodeGenerator
                     // Generate and save the PDF
                     if (GeneratePdfAndSaveToFile(barcodes, saveFileDialog.FileName))
                     {
-                        MessageBox.Show($"PDF saved successfully to:\n{saveFileDialog.FileName}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show($"Plik PDF zapisano pomyœlnie w:\n{saveFileDialog.FileName}", "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
 
                         // Ask if user wants to open the PDF
-                        if (MessageBox.Show("Would you like to open the PDF now?",
-                            "PDF Generated", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                        if (MessageBox.Show("Czy chcesz teraz otworzyæ plik PDF?",
+                            "Wygenerowano plik PDF", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                         {
                             // Open the PDF with the default PDF viewer
                             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -213,7 +308,7 @@ namespace BarcodeGenerator
                     }
                     else
                     {
-                        MessageBox.Show("Failed to save PDF.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show("Nie uda³o siê zapisaæ pliku PDF.", "B³¹d", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
 
                     Mouse.OverrideCursor = null;
@@ -222,7 +317,7 @@ namespace BarcodeGenerator
             catch (Exception ex)
             {
                 Mouse.OverrideCursor = null;
-                MessageBox.Show($"Error generating PDF: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"B³¹d podczas generowania pliku PDF: {ex.Message}", "B³¹d", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -302,19 +397,29 @@ namespace BarcodeGenerator
 
                                 // Apply all formatting in a single chain to avoid container reuse
                                 cellContainer
-    .Border(0.5f)
-    .Height((float)labelHeight, Unit.Millimetre)
-    .Padding(2, Unit.Millimetre)
-    .Element(container =>
-    {
-        // Image needs to be properly constrained
-        container
-            .AlignCenter()
-            .AlignMiddle()
-            .Width(imageWidth, Unit.Millimetre)
-            .Height(imageHeight, Unit.Millimetre)
-            .Image(imageBytes, ImageScaling.FitArea);
-    });
+                                .Border(0.5f)
+                                .BorderColor(showBorders ? QuestPDF.Helpers.Colors.Black : QuestPDF.Helpers.Colors.Transparent)
+                                .Height((float)labelHeight, Unit.Millimetre)
+                                .Padding(2, Unit.Millimetre)
+                                .Element(container =>
+                                {
+                                    // Image needs to be properly constrained and centered
+                                    container
+                                        .AlignCenter()
+                                        .AlignMiddle()
+                                        // Ensure the container takes full available space
+                                        .Height((float)labelHeight - 4, Unit.Millimetre)// Subtract padding (2mm on top and bottom)
+                                                                                        // Then set the image with appropriate dimensions
+                                        .Element(imageContainer =>
+                                        {
+                                            imageContainer
+                                                .Width(imageWidth, Unit.Millimetre)
+                                                .Height(imageHeight, Unit.Millimetre)
+                                                .AlignCenter()
+                                                .AlignMiddle()
+                                                .Image(imageBytes, ImageScaling.FitArea);
+                                        });
+                                });
 
                                 barcodeIndex++;
                             });
@@ -491,11 +596,10 @@ namespace BarcodeGenerator
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error generating PDF: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"B³¹d podczas generowania pliku PDF: {ex.Message}", "B³¹d", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
     }
     #endregion
 }
-    
