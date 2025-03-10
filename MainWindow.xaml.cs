@@ -219,7 +219,7 @@ namespace BarcodeGenerator
         {
             var barcodeTypes = new List<string> { "EAN_13", "EAN_8", "CODE_128", "CODE_39", "QR_CODE" };
             barcodeTypeCB.ItemsSource = barcodeTypes;
-            //barcodeTypeCB.SelectedIndex = 0; // Default to EAN_13
+            barcodeTypeCB.SelectedIndex = 0; // Default to EAN_13
 
             // Restore last selected barcode type
             string lastSelectedType = Properties.Settings.Default.LastSelectedBarcodeType;
@@ -298,7 +298,7 @@ namespace BarcodeGenerator
                 }
                 else
                 {
-                    MessageBox.Show("The margins are too large for the given sheet size and number of labels/columns.");
+                    MessageBox.Show("Marginesy są zbyt duże w stosunku do podanego rozmiaru arkusza i liczby etykiet/kolumn.");
                 }
             }
         }
@@ -375,9 +375,9 @@ namespace BarcodeGenerator
             catch (Exception ex)
             {
                 // Log the exception but don't show a message box to avoid annoying the user
-                Console.WriteLine($"Error updating preview: {ex.Message}");
+                Console.WriteLine($"Błąd podczas aktualizacji podglądu: {ex.Message}");
                 // You could also log to a file or debug output
-                System.Diagnostics.Debug.WriteLine($"Error updating preview: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Błąd podczas aktualizacji podglądu: {ex.Message}");
             }
         }
 
@@ -416,7 +416,7 @@ namespace BarcodeGenerator
                 catch (Exception ex)
                 {
                     // Silently handle errors in preview - don't show a message box
-                    Console.WriteLine($"Error updating preview on resize: {ex.Message}");
+                    Console.WriteLine($"Błąd podczas aktualizacji podglądu przy zmianie rozmiaru: {ex.Message}");
                 }
             }
         }
@@ -483,7 +483,7 @@ namespace BarcodeGenerator
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving template settings: {ex.Message}");
+                MessageBox.Show($"Błąd podczas zapisywania ustawień szablonu: {ex.Message}");
             }
         }
 
@@ -494,7 +494,7 @@ namespace BarcodeGenerator
                 // Check if we have settings storage
                 if (string.IsNullOrEmpty(Properties.Settings.Default.TemplateSettingsStorage))
                 {
-                    MessageBox.Show($"No settings found for template: {templateName}");
+                    MessageBox.Show($"Nie znaleziono ustawień dla szablonu: {templateName}");
                     return;
                 }
 
@@ -507,12 +507,12 @@ namespace BarcodeGenerator
 
                 if (template == null)
                 {
-                    MessageBox.Show($"Template not found: {templateName}");
+                    MessageBox.Show($"Nie znaleziono szablonu: {templateName}");
                     return;
                 }
 
                 // Debug - Show what we found
-                Console.WriteLine($"Found template {templateName}");
+                Console.WriteLine($"Znaleziono szablon {templateName}");
 
                 // Update application settings directly from XML elements
                 // This ensures ResultWindow will use the correct values 
@@ -532,14 +532,14 @@ namespace BarcodeGenerator
                 Properties.Settings.Default.Save();
 
                 // Debug - Log the loaded values
-                Console.WriteLine($"Loaded NumberOfColumns: {Properties.Settings.Default.NumberOfColumns}");
+                Console.WriteLine($"Załadowano NumberOfColumns: {Properties.Settings.Default.NumberOfColumns}");
 
                 // Update UI with loaded settings if needed
                 UpdateUIFromSettings();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading template settings: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show($"Błąd ładowania ustawień szablonu: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -582,7 +582,7 @@ namespace BarcodeGenerator
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error updating UI: {ex.Message}");
+                Console.WriteLine($"Błąd podczas aktualizacji IU: {ex.Message}");
             }
         }
 
@@ -783,7 +783,7 @@ namespace BarcodeGenerator
                 // Validate barcode type selection
                 if (barcodeTypeCB.SelectedItem == null)
                 {
-                    MessageBox.Show("Please select a barcode type.");
+                    MessageBox.Show("Proszę wybrać typ kodu kreskowego.");
                     return;
                 }
                 string barcodeType = barcodeTypeCB.SelectedItem.ToString();
@@ -791,7 +791,7 @@ namespace BarcodeGenerator
                 // Validate template selection
                 if (labeltmplCB.SelectedItem == null)
                 {
-                    MessageBox.Show("Please select a label template.");
+                    MessageBox.Show("Proszę wybrać szablon etykiety.");
                     return;
                 }
                 string templateName = labeltmplCB.SelectedItem.ToString();
@@ -803,7 +803,7 @@ namespace BarcodeGenerator
                 {
                     if (!int.TryParse(NumberTB.Text, out int numberOfBarcodes) || numberOfBarcodes <= 0)
                     {
-                        MessageBox.Show("Please enter a valid number of barcodes to generate.");
+                        MessageBox.Show("Proszę wprowadzić prawidłową liczbę kodów kreskowych do wygenerowania.");
                         return;
                     }
 
@@ -817,7 +817,7 @@ namespace BarcodeGenerator
                 {
                     if (string.IsNullOrWhiteSpace(manualTB_.Text))
                     {
-                        MessageBox.Show("Please enter at least one barcode.");
+                        MessageBox.Show("Proszę wpisać co najmniej jeden kod kreskowy.");
                         return;
                     }
 
@@ -835,7 +835,7 @@ namespace BarcodeGenerator
 
                 if (!barcodesToGenerate.Any())
                 {
-                    MessageBox.Show("No valid barcodes to generate.");
+                    MessageBox.Show("Brak prawidłowych kodów kreskowych do wygenerowania.");
                     return;
                 }
 
@@ -853,7 +853,7 @@ namespace BarcodeGenerator
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error generating barcodes: {ex.Message}");
+                MessageBox.Show($"Błąd podczas generowania kodów kreskowych: {ex.Message}");
             }
         }
 
@@ -863,7 +863,7 @@ namespace BarcodeGenerator
             {
                 if (!IsValidBarcodeFormat(code, barcodeType))
                 {
-                    MessageBox.Show($"Invalid {barcodeType} format: {code}");
+                    MessageBox.Show($"Nieprawidłowy format {barcodeType}: {code}");
                     return false;
                 }
             }
@@ -938,7 +938,7 @@ namespace BarcodeGenerator
 
             if (result.Count < count)
             {
-                MessageBox.Show($"Could only generate {result.Count} unique barcodes out of {count} requested. Please try again with a different type or fewer barcodes.");
+                MessageBox.Show($"Udało się wygenerować tylko {result.Count} unikalnych kodów kreskowych z {count} żądanych. Spróbuj ponownie z innym typem lub mniejszą liczbą kodów kreskowych.");
             }
 
             return result;
@@ -1264,7 +1264,7 @@ namespace BarcodeGenerator
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error removing template settings: {ex.Message}");
+                MessageBox.Show($"Błąd podczas usuwania ustawień szablonu: {ex.Message}");
             }
         }
 
@@ -1306,7 +1306,7 @@ namespace BarcodeGenerator
                 catch (Exception ex)
                 {
                     // Silently handle errors in preview - don't show a message box
-                    Console.WriteLine($"Error creating preview: {ex.Message}");
+                    Console.WriteLine($"Błąd podczas tworzenia podglądu: {ex.Message}");
                 }
             }
         }
@@ -1315,17 +1315,52 @@ namespace BarcodeGenerator
 
         private void ShowResultWindow(List<BarcodeData> barcodes, string templateName)
         {
-            // Get the number of columns directly from settings
-            // This ensures we're using the value from the template that was loaded
-            int columns = int.Parse(Properties.Settings.Default.NumberOfColumns);
-            double labelWidth = double.Parse(Properties.Settings.Default.LabelWidth);
-            double labelHeight = double.Parse(Properties.Settings.Default.LabelHeight);
+            try
+            {
+                // Get template settings from Properties.Settings.Default
+                int numberOfColumns = int.Parse(Properties.Settings.Default.NumberOfColumns);
+                double labelWidth = double.Parse(Properties.Settings.Default.LabelWidth);
+                double labelHeight = double.Parse(Properties.Settings.Default.LabelHeight);
+                double marginIX = double.Parse(Properties.Settings.Default.MarginIX);
+                double marginIY = double.Parse(Properties.Settings.Default.MarginIY);
+                double pageWidth = double.Parse(Properties.Settings.Default.SheetWidth);
+                double pageHeight = double.Parse(Properties.Settings.Default.SheetHeight);
+                double marginOX = double.Parse(Properties.Settings.Default.MarginOX);
+                double marginOY = double.Parse(Properties.Settings.Default.MarginOY);
 
-            var resultWindow = new ResultWindow();
-            string barcodeType = barcodeTypeCB.SelectedItem?.ToString() ?? "UNKNOWN";
+                // Get the selected barcode type
+                string barcodeType = barcodeTypeCB.SelectedItem?.ToString();
 
-            resultWindow.DisplayBarcodes(barcodes, columns, labelWidth, labelHeight, barcodeType);
-            resultWindow.Show();
+                // Verify that a barcode type was selected
+                if (string.IsNullOrEmpty(barcodeType))
+                {
+                    MessageBox.Show("Please select a barcode type.", "Missing Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Per client requirement: Don't show barcode text below images
+                bool showBarcodeText = false;
+
+                // Create and show the result window with all necessary parameters
+                var resultWindow = new ResultWindow(
+                    barcodes,
+                    barcodeType,
+                    numberOfColumns,
+                    labelWidth,
+                    labelHeight,
+                    marginIX,
+                    marginIY,
+                    pageWidth,
+                    pageHeight,
+                    showBarcodeText
+                );
+
+                resultWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error displaying barcodes: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
 
@@ -1715,7 +1750,7 @@ namespace BarcodeGenerator
             }
             else
             {
-                MessageBox.Show("No codes available to load.");
+                MessageBox.Show("Brak dostępnych kodów do załadowania.");
             }
         }
 
@@ -1828,7 +1863,7 @@ namespace BarcodeGenerator
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error retrieving barcodes: {ex.Message}");
+                MessageBox.Show($"Błąd podczas pobierania kodów kreskowych: {ex.Message}");
             }
 
             return barcodes;
