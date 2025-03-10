@@ -91,7 +91,7 @@
                     </Button>
                 </StackPanel>
                 <StackPanel Width="131" Margin="95,0,0,0" VerticalAlignment="Center" Height="62">
-                    <TextBlock TextWrapping="Wrap" Height="26" Width="84"><Run FontWeight="Bold" Text="Obramowanie"/></TextBlock>
+                    <TextBlock TextWrapping="Wrap" Height="26" Width="125"><Run FontWeight="Bold" Text="Obramowanie tak/nie"/></TextBlock>
                     <CheckBox x:Name="showBordersCheckbox" Content="" Width="18" Height="16" Cursor="Hand" Checked="ShowBordersCheckbox_CheckedChanged" Unchecked="ShowBordersCheckbox_CheckedChanged" IsChecked="True"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Width="150" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="80,0,0,0">

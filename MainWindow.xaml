@@ -115,7 +115,7 @@
             <Rectangle HorizontalAlignment="Center" Height="352" VerticalAlignment="Center" Width="260" Fill="White"/>
             <StackPanel HorizontalAlignment="Left" Height="332" Margin="10,0,0,0" VerticalAlignment="Center" Width="240">
                 <TextBlock Height="22" TextWrapping="Wrap" Width="188" Margin="0,11,0,27"><Run FontWeight="Bold" Language="pl-pl" Text="Wpisz kod(y) do wygenerowania"/></TextBlock>
-                <TextBox x:Name="manualTB_" Height="220" TextWrapping="Wrap" Width="233" BorderBrush="#FF080808"/>
+                <TextBox x:Name="manualTB_" Height="220" TextWrapping="Wrap" Width="233" BorderBrush="#FF080808" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
             </StackPanel>
         </Grid>
         <Grid x:Name="SettingsGrid" HorizontalAlignment="Left" Height="357" Margin="150,70,0,0" VerticalAlignment="Top" Width="425" d:IsHidden="True">
@@ -404,7 +404,7 @@
 
         </Grid>
         <Grid x:Name="FootNoteGrid" HorizontalAlignment="Left" Height="33" Margin="145,517,0,0" VerticalAlignment="Top" Width="755">
-            <Image Source="/icons/copyright-line.png" Margin="588,4,145,10">
+            <Image Source="/icons/copyright-line.png" Margin="582,4,145,10">
                 <Image.OpacityMask>
                     <ImageBrush ImageSource="/copyright-line.png"/>
                 </Image.OpacityMask>
@@ -552,6 +552,7 @@
                 </StackPanel>
             </StackPanel>
         </Grid>
+        <Button Content="ResetBtn" Click="ResetBtn_Click" HorizontalAlignment="Left" Height="85" Margin="104,250,0,0" VerticalAlignment="Top" Width="94" Visibility="Collapsed"/>
 
     </Grid>
 </Window>

@@ -11,12 +11,8 @@ using WpfImage = System.Windows.Controls.Image;
 
 namespace BarcodeGenerator
 {
-    /// <summary>
-    /// Interaction logic for ResultWindow.xaml
-    /// </summary>
-    public partial class ResultWindow : Window
+      public partial class ResultWindow : Window
     {
-        // Private fields
         private List<BarcodeData> barcodes;
         private List<List<BarcodeData>> barcodePages;
         private int currentPageIndex = 0;

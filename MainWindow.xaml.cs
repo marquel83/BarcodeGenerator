@@ -1,34 +1,34 @@
-﻿using DrawingRectangle = System.Drawing.Rectangle;
-using WPFRectangle = System.Windows.Shapes.Rectangle;
+﻿using WPFRectangle = System.Windows.Shapes.Rectangle;
 using IOPath = System.IO.Path;
-using ShapesPath = System.Windows.Shapes.Path;
-using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Drawing;
 using Microsoft.Win32;
 using ZXing;
 using System.IO;
-using ZXing.Rendering;
 using ZXing.Windows.Compatibility;
-using System.Xml;
 using System.Xml.Linq;
+
+/*using DrawingRectangle = System.Drawing.Rectangle;
+using ShapesPath = System.Windows.Shapes.Path;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows.Navigation;
+using ZXing.Rendering;
+using System.Xml;
 using QuestPDF.Infrastructure;
 using System.Runtime.ConstrainedExecution;
-using System.Windows.Shapes; // For Rectangle
-using System.Windows.Controls; // For Canvas
+using System.Windows.Shapes; // For Rectangle*/
 
 
 
@@ -38,18 +38,6 @@ namespace BarcodeGenerator
     {
         public MainWindow()
         {
-            //RESET CODE
-            // Reset settings first
-           /* Properties.Settings.Default.Reset();
-            Properties.Settings.Default.TemplateNames = new System.Collections.Specialized.StringCollection();
-            Properties.Settings.Default.SavedBarcodes = new System.Collections.Specialized.StringCollection();
-            Properties.Settings.Default.BarcodeHistory = new System.Collections.Specialized.StringCollection();
-            Properties.Settings.Default.TemplateSettingsStorage = "<Templates></Templates>";
-            Properties.Settings.Default.Save();*/
-
-            
-
-
             InitializeComponent();
             InitializePaperSizes();
             LoadTemplateNames();
@@ -65,7 +53,6 @@ namespace BarcodeGenerator
             UpdateHistoryListBox();
         }
 
-        // Track the different operation modes
         private enum TemplateMode { None, Adding, Editing, Deleting }
         private TemplateMode currentTemplateMode = TemplateMode.None;
         private string originalTemplateName = string.Empty;
@@ -79,12 +66,10 @@ namespace BarcodeGenerator
             // Set the form loaded flag to true
             _formLoaded = true;
 
-            // If you need to initialize any preview content after load
             if (PreviewG != null && PreviewG.Visibility == Visibility.Visible)
             {
                 try
                 {
-                    // Initial preview rendering if needed
                     UpdateTemplatePreview();
                 }
                 catch (Exception ex)
@@ -107,7 +92,6 @@ namespace BarcodeGenerator
                 return;
             }
 
-            // Try to parse the values
             if (!string.IsNullOrEmpty(sizeXTb.Text) &&
                 !string.IsNullOrEmpty(sizeYTb.Text) &&
                 !string.IsNullOrEmpty(no_labels_Tb.Text) &&
@@ -137,6 +121,49 @@ namespace BarcodeGenerator
         }
         //private bool isEditingTemplate = false;
         //private string originalTemplateName = string.Empty;
+
+        private void ResetBtn_Click(object sender, EventArgs e)
+        {
+            var result = MessageBox.Show("Czy na pewno chcesz zresetować wszystkie ustawienia aplikacji? Spowoduje to usunięcie wszystkich szablonów, historii kodów kreskowych i preferencji.",
+                                        "Zresetuj aplikację", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                // Reset all settings
+                Properties.Settings.Default.Reset();
+
+                // Initialize collections to empty
+                Properties.Settings.Default.TemplateNames = new System.Collections.Specialized.StringCollection();
+                Properties.Settings.Default.SavedBarcodes = new System.Collections.Specialized.StringCollection();
+                Properties.Settings.Default.BarcodeHistory = new System.Collections.Specialized.StringCollection();
+
+                // Reset XML storage values
+                Properties.Settings.Default.TemplateSettingsStorage = "<Templates></Templates>";
+                Properties.Settings.Default.BarcodeHistoryAssociations = "<HistoryEntries></HistoryEntries>";
+
+                // Reset other specific properties
+                Properties.Settings.Default.LastSelectedBarcodeType = "";
+                Properties.Settings.Default.LastSelectedTemplate = "";
+                Properties.Settings.Default.LastSelectedItem = "";
+
+                // Reset template-related settings
+                Properties.Settings.Default.PaperSize = "";
+                Properties.Settings.Default.SheetWidth = "";
+                Properties.Settings.Default.SheetHeight = "";
+                Properties.Settings.Default.MarginOX = "";
+                Properties.Settings.Default.MarginOY = "";
+                Properties.Settings.Default.MarginIX = "";
+                Properties.Settings.Default.MarginIY = "";
+                Properties.Settings.Default.LabelWidth = "";
+                Properties.Settings.Default.LabelHeight = "";
+                Properties.Settings.Default.NumberOfLabels = "";
+                Properties.Settings.Default.NumberOfColumns = "";
+
+                // Finally save the changes
+                Properties.Settings.Default.Save();
+            }
+
+        }
 
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -302,25 +329,18 @@ namespace BarcodeGenerator
                 }
             }
         }
+        /*
         private void SetInitialValues()
         {
-            // Remove event handlers temporarily
             sizeXTb.TextChanged -= TextBox_TextChanged;
             sizeYTb.TextChanged -= TextBox_TextChanged;
-            // Remove handlers for other TextBoxes...
-
-            // Set initial values
             sizeXTb.Text = "210";
             sizeYTb.Text = "297";
-            // Set other values...
-
-            // Add handlers back
             sizeXTb.TextChanged += TextBox_TextChanged;
             sizeYTb.TextChanged += TextBox_TextChanged;
-            // Add handlers for other TextBoxes...
-        }
+            
+        }*/
 
-        // Also, update the TextBox_TextChanged method to update the preview in real-time
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (!_formLoaded)
@@ -328,14 +348,12 @@ namespace BarcodeGenerator
 
             try
             {
-                // First check if the control is loaded and visible
-                if (!IsLoaded || PreviewG == null)
+                 if (!IsLoaded || PreviewG == null)
                     return;
 
                 CalculateLabelSize();
                 UpdateTemplatePreview();
 
-                // Check if all TextBoxes are properly initialized before trying to access them
                 if (sizeXTb == null || sizeYTb == null || no_labels_Tb == null ||
                     no_column_Tb == null || label_size_X_Tb == null || label_size_Y_Tb == null ||
                     mariginO_X_Tb == null || mariginO_Y_Tb == null ||
@@ -344,7 +362,6 @@ namespace BarcodeGenerator
                     return; // Exit if any control is null
                 }
 
-                // Then try to parse the values, only if all TextBoxes have text
                 if (!string.IsNullOrEmpty(sizeXTb.Text) &&
                     !string.IsNullOrEmpty(sizeYTb.Text) &&
                     !string.IsNullOrEmpty(no_labels_Tb.Text) &&
@@ -427,19 +444,19 @@ namespace BarcodeGenerator
             {
                 // Get current values from UI
                 var settings = new Dictionary<string, string>
-        {
-            { "PaperSize", formatCb.SelectedItem?.ToString() ?? "" },
-            { "SheetWidth", sizeXTb.Text },
-            { "SheetHeight", sizeYTb.Text },
-            { "MarginOX", mariginO_X_Tb.Text },
-            { "MarginOY", mariginO_Y_Tb.Text },
-            { "MarginIX", mariginI_X_Tb.Text },
-            { "MarginIY", mariginI_Y_Tb.Text },
-            { "LabelWidth", label_size_X_Tb.Text },
-            { "LabelHeight", label_size_Y_Tb.Text },
-            { "NumberOfLabels", no_labels_Tb.Text },
-            { "NumberOfColumns", no_column_Tb.Text }
-        };
+                {
+                    { "PaperSize", formatCb.SelectedItem?.ToString() ?? "" },
+                    { "SheetWidth", sizeXTb.Text },
+                    { "SheetHeight", sizeYTb.Text },
+                    { "MarginOX", mariginO_X_Tb.Text },
+                    { "MarginOY", mariginO_Y_Tb.Text },
+                    { "MarginIX", mariginI_X_Tb.Text },
+                    { "MarginIY", mariginI_Y_Tb.Text },
+                    { "LabelWidth", label_size_X_Tb.Text },
+                    { "LabelHeight", label_size_Y_Tb.Text },
+                    { "NumberOfLabels", no_labels_Tb.Text },
+                    { "NumberOfColumns", no_column_Tb.Text }
+                };
 
                 // Load existing XML
                 XDocument doc;
@@ -452,8 +469,14 @@ namespace BarcodeGenerator
                     doc = XDocument.Parse(Properties.Settings.Default.TemplateSettingsStorage);
                 }
 
+                // Ensure the root element is not null
+                if (doc.Root == null)
+                {
+                    doc.Add(new XElement("Templates"));
+                }
+
                 // Remove existing template if any
-                var existingTemplate = doc.Root.Elements("Template")
+                var existingTemplate = doc.Root?.Elements("Template")
                     .FirstOrDefault(e => e.Attribute("Name")?.Value == templateName);
                 if (existingTemplate != null)
                 {
@@ -471,6 +494,11 @@ namespace BarcodeGenerator
                 }
 
                 // Add template to document
+                // Ensure the root element is not null before adding the template
+                if (doc.Root != null)
+                {
+                    doc.Root.Add(templateElement);
+                }
                 doc.Root.Add(templateElement);
 
                 // Save back to settings
@@ -498,11 +526,9 @@ namespace BarcodeGenerator
                     return;
                 }
 
-                // Parse XML
                 XDocument doc = XDocument.Parse(Properties.Settings.Default.TemplateSettingsStorage);
 
-                // Find template
-                var template = doc.Root.Elements("Template")
+                var template = doc.Root?.Elements("Template")
                     .FirstOrDefault(e => e.Attribute("Name")?.Value == templateName);
 
                 if (template == null)
@@ -511,7 +537,6 @@ namespace BarcodeGenerator
                     return;
                 }
 
-                // Debug - Show what we found
                 Console.WriteLine($"Znaleziono szablon {templateName}");
 
                 // Update application settings directly from XML elements
@@ -636,9 +661,7 @@ namespace BarcodeGenerator
         }*/
 
         // Add a method to render the template preview in the PreviewG grid
-        private void RenderTemplatePreviewInGrid(double sheetWidth, double sheetHeight, int numberOfLabels,
-    int numberOfColumns, double labelWidth, double labelHeight,
-    double marginOX, double marginOY, double marginIX, double marginIY)
+        private void RenderTemplatePreviewInGrid(double sheetWidth, double sheetHeight, int numberOfLabels, int numberOfColumns, double labelWidth, double labelHeight, double marginOX, double marginOY, double marginIX, double marginIY)
         {
             if (PreviewG == null)
                 return;
@@ -720,7 +743,7 @@ namespace BarcodeGenerator
         }
 
 
-
+/*
         private bool ValidateTemplateInput()
         {
             if (string.IsNullOrWhiteSpace(label_name_Tb.Text))
@@ -774,7 +797,7 @@ namespace BarcodeGenerator
             }
 
             return true;
-        }
+        }*/
 
         private void GenerateBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -786,7 +809,7 @@ namespace BarcodeGenerator
                     MessageBox.Show("Proszę wybrać typ kodu kreskowego.");
                     return;
                 }
-                string barcodeType = barcodeTypeCB.SelectedItem.ToString();
+                string barcodeType = barcodeTypeCB.SelectedItem?.ToString() ?? string.Empty;
 
                 // Validate template selection
                 if (labeltmplCB.SelectedItem == null)
@@ -794,7 +817,7 @@ namespace BarcodeGenerator
                     MessageBox.Show("Proszę wybrać szablon etykiety.");
                     return;
                 }
-                string templateName = labeltmplCB.SelectedItem.ToString();
+                string templateName = labeltmplCB.SelectedItem?.ToString() ?? string.Empty;
 
                 List<string> barcodesToGenerate = new List<string>();
 
@@ -916,7 +939,10 @@ namespace BarcodeGenerator
             {
                 foreach (string barcode in Properties.Settings.Default.SavedBarcodes)
                 {
-                    existingBarcodes.Add(barcode);
+                    if (!string.IsNullOrEmpty(barcode))
+                    {
+                        existingBarcodes.Add(barcode);
+                    }
                 }
             }
 
@@ -943,6 +969,7 @@ namespace BarcodeGenerator
 
             return result;
         }
+
 
 
         private string GenerateBarcode(string barcodeType, Random random)
@@ -1013,11 +1040,9 @@ namespace BarcodeGenerator
 
         private string GenerateQRCode(Random random)
         {
-            // Instead of using hardcoded timestamp and login, generate a unique identifier
             var result = new StringBuilder();
-            int length = random.Next(8, 13); // Similar length as other barcode types
+            int length = random.Next(8, 13); 
 
-            // Generate random alphanumeric string
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             for (int i = 0; i < length; i++)
             {
@@ -1038,7 +1063,7 @@ namespace BarcodeGenerator
                     Height = barcodeType == "QR_CODE" ? 300 : 150,
                     Margin = barcodeType == "QR_CODE" ? 1 : 0
                 },
-                Renderer = new BitmapRenderer() // Add this line to set the renderer
+                Renderer = new BitmapRenderer()
             };
 
             return barcodeValues.Select(value => new BarcodeData
@@ -1069,7 +1094,6 @@ namespace BarcodeGenerator
 
 
 
-        // Updated addtemplBtn_Click to handle all three modes
         private void addtemplBtn_Click(object sender, RoutedEventArgs e)
         {
             switch (currentTemplateMode)
@@ -1087,13 +1111,11 @@ namespace BarcodeGenerator
                     break;
 
                 default:
-                    // Default behavior (should not happen)
                     MessageBox.Show("Nieoczekiwany błąd w trybie szablonu.");
                     break;
             }
         }
 
-        // Handle adding a new template
         private void HandleAddTemplate()
         {
             var templateName = label_name_Tb.Text;
@@ -1268,19 +1290,21 @@ namespace BarcodeGenerator
             }
         }
 
-        // Modify the LabelTmplCB_SelectionChanged method to update the preview
         private void LabelTmplCB_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (labeltmplCB.SelectedItem != null)
             {
-                string selectedTemplate = labeltmplCB.SelectedItem.ToString();
+                string selectedTemplate = labeltmplCB.SelectedItem?.ToString() ?? string.Empty;
 
                 // Save the selected template name
                 Properties.Settings.Default.LastSelectedTemplate = selectedTemplate;
                 Properties.Settings.Default.Save();
 
                 // Load this template's specific settings
-                LoadTemplateSettings(selectedTemplate);
+                if (!string.IsNullOrEmpty(selectedTemplate))
+                {
+                    LoadTemplateSettings(selectedTemplate);
+                }
 
                 // Generate preview of the selected template
                 try
@@ -1329,7 +1353,7 @@ namespace BarcodeGenerator
                 double marginOY = double.Parse(Properties.Settings.Default.MarginOY);
 
                 // Get the selected barcode type
-                string barcodeType = barcodeTypeCB.SelectedItem?.ToString();
+                string? barcodeType = barcodeTypeCB.SelectedItem?.ToString();
 
                 // Verify that a barcode type was selected
                 if (string.IsNullOrEmpty(barcodeType))
@@ -1352,7 +1376,8 @@ namespace BarcodeGenerator
                     marginIY,
                     pageWidth,
                     pageHeight,
-                    showBarcodeText
+                    showBarcodeText,
+                    true
                 );
 
                 resultWindow.Show();
@@ -1399,8 +1424,11 @@ namespace BarcodeGenerator
                 entryElement.Add(new XElement("Barcode", barcode.Value));
             }
 
-            // Add the entry to the document
-            historyDoc.Root.Add(entryElement);
+            // Ensure the root element is not null before adding the entry
+            if (historyDoc.Root != null)
+            {
+                historyDoc.Root.Add(entryElement);
+            }
 
             // Save back to settings
             Properties.Settings.Default.BarcodeHistoryAssociations = historyDoc.ToString();
@@ -1485,7 +1513,6 @@ namespace BarcodeGenerator
 
         }
 
-        // Updated addBtn_Click for consistency with new mode enum
         private void addBtn_Click(object sender, RoutedEventArgs e)
         {
             ShowGrid(SettingsGrid);
@@ -1580,7 +1607,7 @@ namespace BarcodeGenerator
             // Get selected template name
             if (formatCb.SelectedItem != null)
             {
-                string selectedTemplate = formatCb.SelectedItem.ToString();
+                string selectedTemplate = formatCb.SelectedItem?.ToString() ?? string.Empty;
 
                 // Store the original template name for later comparison
                 originalTemplateName = selectedTemplate;
@@ -1676,7 +1703,7 @@ namespace BarcodeGenerator
         {
             if (formatCb.SelectedItem != null)
             {
-                string selectedTemplate = formatCb.SelectedItem.ToString();
+                string selectedTemplate = formatCb.SelectedItem?.ToString() ?? string.Empty;
 
                 // Store the original template name for deletion
                 originalTemplateName = selectedTemplate;
@@ -1846,6 +1873,12 @@ namespace BarcodeGenerator
 
                 XDocument historyDoc = XDocument.Parse(Properties.Settings.Default.BarcodeHistoryAssociations);
 
+                // Ensure the root element is not null
+                if (historyDoc.Root == null)
+                {
+                    return barcodes;
+                }
+
                 // Find the history entry with this ID
                 var entryElement = historyDoc.Root.Elements("HistoryEntry")
                     .FirstOrDefault(e => e.Attribute("Id")?.Value == historyId);
@@ -1868,7 +1901,7 @@ namespace BarcodeGenerator
 
             return barcodes;
         }
-
+        /*
         private void ShowBarcodesForEntry(string historyEntry)
         {
             try
@@ -1909,7 +1942,7 @@ namespace BarcodeGenerator
             {
                 MessageBox.Show($"Błąd podczas wyświetlania kodów: {ex.Message}");
             }
-        }
+        }*/
 
         // Handle file loading
         private void LoadFileButton_Click(object sender, RoutedEventArgs e)
