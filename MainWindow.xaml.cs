@@ -221,12 +221,12 @@ namespace BarcodeGenerator
             {
                 if (!defaultValues.ContainsKey(tb))
                 {
-                    defaultValues[tb] = tb.Text;  // Zapisanie domyślnej wartości, jeśli nie została wcześniej zapisana
+                    defaultValues[tb] = tb.Text;  
                 }
 
                 if (!string.IsNullOrWhiteSpace(tb.Text))
                 {
-                    tb.Text = "";  // Czyści pole, jeśli zawiera jakikolwiek tekst
+                    tb.Text = "";  
                 }
             }
         }
@@ -235,7 +235,7 @@ namespace BarcodeGenerator
         {
             if (sender is TextBox tb && string.IsNullOrWhiteSpace(tb.Text))
             {
-                tb.Text = defaultValues.ContainsKey(tb) ? defaultValues[tb] : "0";  // Przywraca domyślną wartość lub "0"
+                tb.Text = defaultValues.ContainsKey(tb) ? defaultValues[tb] : "0";  
             }
         }
 
