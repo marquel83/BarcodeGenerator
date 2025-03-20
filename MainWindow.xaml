@@ -549,7 +549,7 @@
                 </StackPanel>
             </StackPanel>
         </Grid>
-        <Button Content="ResetBtn" Click="ResetBtn_Click" HorizontalAlignment="Left" Height="45" Margin="812,446,0,0" VerticalAlignment="Top" Width="52"/>
+        <Button Content="ResetBtn" Click="ResetBtn_Click" HorizontalAlignment="Left" Height="45" Margin="812,446,0,0" VerticalAlignment="Top" Width="52" Visibility="Collapsed"/>
 
     </Grid>
 </Window>

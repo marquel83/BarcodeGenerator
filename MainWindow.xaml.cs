@@ -124,7 +124,7 @@ namespace BarcodeGenerator
 
         private void ResetBtn_Click(object sender, EventArgs e)
         {
-            var result = MessageBox.Show("Czy na pewno chcesz zresetować wszystkie ustawienia aplikacji? Spowoduje to usunięcie wszystkich szablonów, historii kodów kreskowych i preferencji.",
+            /*var result = MessageBox.Show("Czy na pewno chcesz zresetować wszystkie ustawienia aplikacji? Spowoduje to usunięcie wszystkich szablonów, historii kodów kreskowych i preferencji.",
                                         "Zresetuj aplikację", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.Yes)
@@ -161,7 +161,7 @@ namespace BarcodeGenerator
 
                 // Finally save the changes
                 Properties.Settings.Default.Save();
-            }
+            }*/
 
         }
 
@@ -1984,6 +1984,11 @@ namespace BarcodeGenerator
                     MessageBox.Show($"Wystąpił błąd podczas wczytywania pliku: {ex.Message}");
                 }
             }
+        }
+
+        private void ResetBtn_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
     public class BarcodeData
